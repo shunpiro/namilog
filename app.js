@@ -1,7 +1,7 @@
 /* ===== 【JavaScript】波ログの動き =====
    ① 選択肢  ② 便利な道具  ③ ログインとデータ保存（Supabase）  ④ 写真・動画
-   ⑤ 記録フォーム  ⑥ 画面を描く  ⑦ うねりの絵  ⑧ AIコーチ（Gemini／Claude）
-   ⑨ 設定画面  ⑩ 起動                                                        */
+   ⑤ 記録フォーム  ⑥ 画面を描く  ⑦ うねりの絵  ⑧ AIコーチ（Gemini／いつものAI）
+   ⑨ 設定画面（これまでの記録の取り込みもここ）  ⑩ 起動                          */
 {
 
 /* ① 選択肢 ― ここを書き換えると選択肢が変わります（いちばん簡単な改造ポイント） */
@@ -322,7 +322,7 @@ $('list').addEventListener('click', async e => {
   const t = e.target.closest('button'); if (!t) return;
   const ds = t.dataset;
   if (ds.coach) { openAdv.add(ds.coach); askCoach(ds.coach); return; }
-  if (ds.claude) { copyForClaude(ds.claude); return; }
+  if (ds.chat) { copyForChat(ds.chat); return; }
   if (ds.savepaste) { savePasted(ds.savepaste); return; }
   if (ds.hw) { setHomework(ds.hw, ds.v); return; }
   if (ds.edit) { const r = items.find(x => x.id === ds.edit); if (r) openForm(r); return; }
@@ -359,7 +359,7 @@ function drawWave() {
 }
 new ResizeObserver(drawWave).observe(fig);
 
-/* ⑧ AIコーチ ― 記録とプロフィールを「指示書（prompt）」にまとめて、Gemini（自動）か Claude（コピペ）に渡す
+/* ⑧ AIコーチ ― 記録とプロフィールを「指示書（prompt）」にまとめて、Gemini（自動）か いつものAI（コピペ）に渡す
    ここの文章を書き換えると、コーチの性格や答え方が変わります                                   */
 const brief = r => {
   const o = { 日付: r.date + (r.dateNote ? `（${r.dateNote}）` : ''), 時間: r.start ? `${r.start}〜${r.end || ''}` : r.timeOfDay, ポイント: r.spot, ボード: r.board, スタンス: r.stance,
@@ -471,7 +471,7 @@ async function askGemini(parts) {
     }
     // 全部だめなら、どのモデルを試したかを添えてエラーを出す（原因を調べやすくするため）
     e.busy = true;
-    e.message = `混んでいて使えませんでした（試したモデル：${tried.join('、')}）。少し時間をおくか「Claudeで聞く」を使ってください`;
+    e.message = `混んでいて使えませんでした（試したモデル：${tried.join('、')}）。少し時間をおくか「いつものAIに聞く」を使ってください`;
     throw e;
   }
 }
@@ -480,7 +480,7 @@ const parseJson = t => { const s = t.replace(/^```(?:json)?\s*|\s*```$/g, ''); t
 
 async function askCoach(id) {
   const x = items.find(r => r.id === id); if (!x || coachBusy[id]) return;
-  if (!store.get('namilog-gkey')) { coachErr[id] = 'GeminiのAPIキーが未設定です。⚙︎設定から入れるか、「Claudeで聞く」を使ってください'; render(); return; }
+  if (!store.get('namilog-gkey')) { coachErr[id] = 'AIコーチのキー（Gemini）が未設定です。⚙︎設定から入れるか、「いつものAIに聞く」を使ってください'; render(); return; }
   coachBusy[id] = true; delete coachErr[id]; render();
   try {
     const parts = [{ text: buildPrompt(x, false) }];
@@ -498,24 +498,25 @@ async function askCoach(id) {
   } catch (e) {
     const m = e.message || '';
     coachErr[id] = e.busy ? m // 混雑で全モデルだめだったとき：試したモデル名入りのメッセージをそのまま出す
-      : e.status === 429 || /quota|exhausted/i.test(m) ? '無料枠の回数制限に当たりました。少し時間をおくか、「Claudeで聞く」を使ってください'
+      : e.status === 429 || /quota|exhausted/i.test(m) ? '無料枠の回数制限に当たりました。少し時間をおくか、「いつものAIに聞く」を使ってください'
       : e.status === 400 && /key/i.test(m) || e.status === 403 ? 'APIキーが正しくないようです。⚙︎設定を確認してください'
       : m === 'blocked' ? 'この内容にはアドバイスが返りませんでした' : 'うまく受け取れませんでした（' + m.slice(0, 80) + '）';
   }
   delete coachBusy[id]; render();
 }
-/* Claude（コピペ）で聞く ― 指示書をコピー → Claudeアプリに貼る → 答えをここに貼って保存 */
-async function copyForClaude(id) {
+/* いつものAIに聞く（コピペ）― 指示書をコピー → ChatGPT・Claude・Geminiなど自分のAIに貼る → 答えをここに貼って保存
+   キーもお金もいらない。使う人それぞれのAIアカウントで答えてもらう                                       */
+async function copyForChat(id) {
   const x = items.find(r => r.id === id); if (!x) return;
   const imgs = (x.media || []).filter(m => m.kind === 'image').length;
   const text = buildPrompt(x, true) + (imgs ? `\n\n（写真が${imgs}枚あります。このあと貼り付けます）` : '');
-  try { await navigator.clipboard.writeText(text); toast('コピーしました。Claudeに貼り付けてください'); }
+  try { await navigator.clipboard.writeText(text); toast('コピーしました。いつものAIに貼り付けてください'); }
   catch (e) { toast('コピーできませんでした'); }
   pasteOpen = id; render();
 }
 async function savePasted(id) {
   const ta = document.getElementById('paste-' + id); const text = ta?.value.trim(); if (!text) return;
-  try { await saveRec({ ...items.find(r => r.id === id), advice: { source: 'claude', text, at: Date.now() } }); pasteOpen = null; openAdv.add(id); render(); toast('アドバイスを保存しました'); }
+  try { await saveRec({ ...items.find(r => r.id === id), advice: { source: 'paste', text, at: Date.now() } }); pasteOpen = null; openAdv.add(id); render(); toast('アドバイスを保存しました'); }
   catch (e) { toast('保存できませんでした'); }
 }
 async function setHomework(id, text) {
@@ -527,7 +528,8 @@ function coachHtml(x) {
   let h = '';
   if (a) {
     const d = new Date(a.at);
-    const body = a.source === 'claude' ? `<p class="free">${esc(a.text)}</p>` : `
+    const pasted = a.source === 'paste' || a.source === 'claude'; // 'claude' は前の版で保存したもの
+    const body = pasted ? `<p class="free">${esc(a.text)}</p>` : `
       ${a.happened ? `<h4>何が起きたか</h4><p>${esc(a.happened)}</p>` : ''}
       ${a.causes?.length ? `<h4>考えられる原因</h4><ul>${a.causes.map(c => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
       ${a.actions?.length ? `<h4>次に試すこと</h4><ol>${a.actions.map(p => `<li><b>${esc(p.title)}</b>${esc(p.detail)}</li>`).join('')}</ol>` : ''}
@@ -535,13 +537,13 @@ function coachHtml(x) {
       ${a.safety ? `<p class="body">${esc(a.safety)}</p>` : ''}
       ${a.homework?.length ? `<h4>タップで次回の宿題にする</h4><div class="hwc">${a.homework.map(t => `<button type="button" class="${x.next === t ? 'on' : ''}" data-hw="${esc(x.id)}" data-v="${esc(t)}">${x.next === t ? '✓ ' : ''}${esc(t)}</button>`).join('')}</div>` : ''}`;
     h += `<details class="coach" data-adv="${esc(x.id)}" ${openAdv.has(x.id) ? 'open' : ''}><summary>コーチのアドバイス</summary><div class="cb">${body}
-      <small class="note">${d.getMonth() + 1}/${d.getDate()} · ${a.source === 'claude' ? 'Claude' : 'Gemini'}${a.photos ? ` · 写真${a.photos}枚を参考` : ''} · 記録からの一般的なアドバイスです</small></div></details>`;
+      <small class="note">${d.getMonth() + 1}/${d.getDate()} · ${pasted ? 'いつものAI' : 'AIコーチ'}${a.photos ? ` · 写真${a.photos}枚を参考` : ''} · 記録からの一般的なアドバイスです</small></div></details>`;
   }
   if (busy) h += `<p class="thinking"><i></i>コーチが考え中…（10〜30秒）</p>`;
-  else h += `<div class="asks"><button type="button" class="ask" data-coach="${esc(x.id)}">${a ? 'もう一度聞く' : 'コーチに聞く'}</button><button type="button" class="ask" data-claude="${esc(x.id)}">Claudeで聞く</button></div>`;
+  else h += `<div class="asks"><button type="button" class="ask" data-coach="${esc(x.id)}">${a ? 'もう一度聞く' : 'AIコーチに聞く'}</button><button type="button" class="ask" data-chat="${esc(x.id)}">いつものAIに聞く</button></div>`;
   if (err) h += `<p class="err">${esc(err)}</p>`;
-  if (pasteOpen === x.id) h += `<div class="paste"><p>① 指示書をコピーしました → <a href="https://claude.ai/new" target="_blank" rel="noopener">Claudeを開く</a>（写真は手で添付）<br>② 返ってきた答えを下に貼って保存</p>
-    <textarea id="paste-${esc(x.id)}" placeholder="Claudeの答えをここに貼り付け"></textarea><button type="button" class="btn pri" data-savepaste="${esc(x.id)}">アドバイスとして保存</button></div>`;
+  if (pasteOpen === x.id) h += `<div class="paste"><p>① 指示書をコピーしました → ChatGPT・Claude・Geminiなど、いつも使っているAIに貼り付け（写真は手で添付）<br>② 返ってきた答えを下に貼って保存</p>
+    <textarea id="paste-${esc(x.id)}" placeholder="AIの答えをここに貼り付け"></textarea><button type="button" class="btn pri" data-savepaste="${esc(x.id)}">アドバイスとして保存</button></div>`;
   return h;
 }
 
@@ -567,17 +569,117 @@ $('profileForm').addEventListener('submit', async e => {
   for (const k of PF) p[k] = f[k].value.trim();
   try { await saveProfile(p); toast('プロフィールを保存しました'); } catch (err) { toast('保存できませんでした'); }
 });
-$('importSeed').addEventListener('click', async () => {
-  const S = window.NAMILOG_SEED; if (!S) return;
-  const have = new Set(items.map(x => x.seedId).filter(Boolean));
-  const todo = S.sessions.filter(s => !have.has(s.seedId));
+/* これまでの記録を取り込む ― アプリを使う前のメモを貼る → AIが記録の形に分ける → 確認して保存
+   AIは「AIコーチ（Gemini）」でも「いつものAI（コピペ）」でもOK。書いていないことは空欄のまま */
+const PF_LABEL = { level: 'レベル', spots: 'よく行く場所', stance: 'スタンス', board: 'ボード', waveAB: '波A・Bの区別', canDo: 'できるようになったこと',
+  issues: '今の課題', goals: '練習目標（優先順）', gear: '用具・購入検討', why: 'サーフィンへの思い' };
+let impData = null, impDup = []; // AIが変換した結果（保存前の確認用）と「同じ日・同じ場所の記録がもうあるか」
+function importPrompt(memo) {
+  const ch = k => OPT[k].join(' / '); // 選択肢を「A / B / C」の形で並べる
+  return `あなたはサーフィン記録アプリ「波ログ」のデータ整理係です。下の【メモ】は、ユーザーがアプリを使う前に書いたサーフィンの記録です。
+1回の海＝1件の記録に分けて、下の【形式】のJSONだけを返してください（説明文やコードブロックは不要）。
+
+【ルール】
+- メモに書いていないことは推測で埋めない。分からない項目は出力しない（波の高さ・本数・時間などを作らない）
+- 予報の内容は forecast に入れ、実際の波の項目（size など）には入れない
+- 日付は YYYY-MM-DD。年が書いていなければ、今日（${today()}）以前でいちばん近い年にする。日付があいまいなら dateNote にそのことを書く（例：「10/1頃。正確な日付は不明」）
+- 選択肢がある項目は、選択肢の言葉そのままで入れる。当てはまらなければ出力しない
+- メモの言い回しはできるだけ残す。1回の海に結びつかない内容（レベル・課題・目標・用具・思いなど）は profile に入れる
+
+【形式】（値の説明。分からない項目は省く）
+{"sessions":[{
+ "date":"YYYY-MM-DD", "dateNote":"日付の補足", "start":"入水 HH:MM", "end":"終了 HH:MM", "timeOfDay":"${ch('timeOfDay')}",
+ "spot":"ポイント名", "board":"ボード", "stance":"${ch('stance')}", "weather":"${ch('weather')}", "size":"${ch('size')}",
+ "swellDir":"${ch('swellDir')}", "period":"周期（秒）", "wind":"${ch('wind')}", "windStr":"${ch('windStr')}", "tide":"${ch('tide')}", "forecast":"予報メモ",
+ "theme":"その日のテーマ・練習したこと", "ach":"テーマの達成度 1〜5の数字", "takeoffs":"テイクオフに挑戦した回数（数字）", "caught":"波をキャッチした回数（数字）", "rides":"立って滑れた回数（数字）",
+ "waveType":"${ch('waveType')}（A＝崩れる前の滑らかな波、B＝崩れた白波）", "paddle":"パドルの調子 1〜5（1=きつい 5=絶好調）", "longest":"いちばん長く乗れた波の様子",
+ "falls":["失敗の原因。次から選ぶ（複数可）：${ch('falls')}"], "newSkill":"できるようになったこと", "growth":"成長を感じたこと", "next":"次回の宿題・次にやりたいこと",
+ "memo":"その他の気づき", "body":"体の痛み・擦れ", "english":"英語メモ", "rate":"満足度 1〜5"
+}],
+"profile":{${PF.map(k => `"${k}":"${PF_LABEL[k]}"`).join(', ')}}}
+
+【メモ】
+${memo}`;
+}
+// AIの答えを、アプリで使える形に整える（知らない項目や、選択肢にない言葉は捨てる）
+function cleanImport(o) {
+  const out = { sessions: [], profile: {} };
+  const txt = v => v == null ? '' : String(v).trim();
+  const hhmm = v => { const m = txt(v).match(/^(\d{1,2}):(\d{2})$/); return m ? pad(m[1]) + ':' + m[2] : ''; };
+  for (const s of Array.isArray(o?.sessions) ? o.sessions : []) {
+    const r = { date: /^\d{4}-\d{2}-\d{2}$/.test(txt(s.date)) ? txt(s.date) : '' };
+    for (const k of ['dateNote', 'spot', 'board', 'period', 'forecast', 'theme', 'longest', 'newSkill', 'growth', 'next', 'memo', 'body', 'english']) if (txt(s[k])) r[k] = txt(s[k]);
+    for (const k of ['start', 'end']) if (hhmm(s[k])) r[k] = hhmm(s[k]);
+    if (r.start && r.end) r.mins = minutesBetween(r.start, r.end);
+    for (const k of ['takeoffs', 'caught', 'rides']) if (txt(s[k]) && Number.isFinite(+s[k])) r[k] = Math.max(0, Math.round(+s[k]));
+    for (const k of ['ach', 'paddle', 'rate']) { const n = Math.round(+s[k]); if (n >= 1 && n <= 5) r[k] = n; }
+    for (const k of ['timeOfDay', 'stance', 'weather', 'size', 'swellDir', 'wind', 'windStr', 'tide', 'waveType']) if (OPT[k].includes(txt(s[k]))) r[k] = txt(s[k]);
+    const falls = (Array.isArray(s.falls) ? s.falls : []).filter(v => OPT.falls.includes(v)); if (falls.length) r.falls = falls;
+    if (Object.keys(r).length > 1 || r.date) out.sessions.push(r);
+  }
+  for (const k of PF) if (txt(o?.profile?.[k])) out.profile[k] = txt(o.profile[k]);
+  return out;
+}
+function setImport(o) { // 変換結果を受け取って、確認画面を出す
+  impData = cleanImport(o);
+  impDup = impData.sessions.map(s => items.some(x => x.date === s.date && x.spot === s.spot));
+  const n = impData.sessions.length, pf = Object.keys(impData.profile).length;
+  $('impMsg').textContent = n || pf ? `${n}回分${pf ? '＋プロフィール' : ''}が見つかりました。下で確認してください` : '記録が見つかりませんでした。メモの内容を確認してください';
+  drawImport();
+}
+function drawImport() {
+  const box = $('impPreview'); if (!impData) { box.innerHTML = ''; return; }
+  const { sessions, profile: pf } = impData, pfKeys = PF.filter(k => pf[k]);
+  const sum = s => Object.entries(brief(s)).filter(([k]) => k !== '日付' && k !== 'ポイント').map(([k, v]) => `${k}：${v}`).join('／');
+  const row = (s, i) => `<div class="paste">
+      <label style="display:flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" data-impon="${i}" ${impDup[i] ? '' : 'checked'}> ${i + 1}件目${impDup[i] ? '<span class="tag">同じ日・場所の記録あり</span>' : ''}</label>
+      <label class="f">日付<input type="date" data-impdate="${i}" value="${esc(s.date)}"></label>
+      <label class="f">ポイント<input type="text" data-impspot="${i}" value="${esc(s.spot || '')}"></label>
+      ${s.dateNote ? `<p class="note">※ ${esc(s.dateNote)}</p>` : ''}
+      <p class="hint">${esc(sum(s).slice(0, 300)) || '（ほかの項目なし）'}</p></div>`;
+  box.innerHTML = (sessions.length || pfKeys.length) ? `<div class="gbody">
+    <p class="hint">取り込むものにチェック。日付とポイントはここで直せます。ほかの項目は、取り込んだあと各記録の「編集」から直せます。</p>
+    ${sessions.map(row).join('')}
+    ${pfKeys.length ? `<div class="paste"><label style="display:flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" id="impPf" checked> プロフィール（いま空欄の項目だけ埋めます）</label>
+      <p class="hint">${pfKeys.map(k => PF_LABEL[k]).join('、')}</p></div>` : ''}
+    <button class="btn pri" type="button" id="impSave">チェックしたものを保存</button></div>` : '';
+}
+async function saveImport() {
+  const box = $('impPreview'), q = s => box.querySelector(s);
+  const rows = impData.sessions.map((s, i) => ({ ...s, date: q(`[data-impdate="${i}"]`).value, spot: q(`[data-impspot="${i}"]`).value.trim() }))
+    .filter((_, i) => q(`[data-impon="${i}"]`).checked);
+  const usePf = q('#impPf')?.checked;
+  if (!rows.length && !usePf) { toast('チェックされたものがありません'); return; }
+  if (rows.some(r => !r.date || !r.spot)) { toast('日付とポイントが空の記録があります'); return; }
+  q('#impSave').disabled = true;
   try {
-    if (!Object.keys(profile).length) await saveProfile(S.profile);
-    for (const s of todo) await saveRec({ ...s, updated: Date.now() });
-    render(); openSettings();
-    toast(todo.length ? `${todo.length}回分を取り込みました` : 'もう取り込み済みです');
-  } catch (e) { toast('取り込めませんでした（' + (e.message || '') + '）'); }
+    for (const r of rows) await saveRec({ ...r, updated: Date.now() });
+    if (usePf) { const p = { ...profile }; for (const k of PF) if (!p[k] && impData.profile[k]) p[k] = impData.profile[k]; await saveProfile(p); }
+    impData = null; $('impText').value = ''; $('impAnswer').value = ''; $('impPaste').hidden = true; $('impMsg').textContent = '';
+    drawImport(); render(); openSettings();
+    toast(`${rows.length}回分${usePf ? '＋プロフィール' : ''}を取り込みました`);
+  } catch (e) { toast('保存できませんでした（' + (e.message || '') + '）'); q('#impSave').disabled = false; }
+}
+const impMemo = () => { const t = $('impText').value.trim(); if (!t) $('impMsg').textContent = 'メモを貼り付けてください'; return t; };
+$('impAi').addEventListener('click', async () => { // AIコーチ（Gemini）で自動変換
+  const memo = impMemo(); if (!memo) return;
+  if (!store.get('namilog-gkey')) { $('impMsg').textContent = 'AIコーチのキー（Gemini）が未設定です。上で設定するか「いつものAIで変換」を使ってください'; return; }
+  const b = $('impAi'); b.disabled = true; $('impMsg').textContent = '変換中…（10〜30秒）';
+  try { const o = parseJson(await askGemini([{ text: importPrompt(memo) }])); if (!o) throw new Error('答えを読み取れませんでした'); setImport(o); }
+  catch (e) { $('impMsg').textContent = '変換できませんでした：' + (e.message || '').slice(0, 120); }
+  b.disabled = false;
 });
+$('impCopy').addEventListener('click', async () => { // いつものAI（コピペ）で変換
+  const memo = impMemo(); if (!memo) return;
+  try { await navigator.clipboard.writeText(importPrompt(memo)); toast('コピーしました。いつものAIに貼り付けてください'); } catch (e) { toast('コピーできませんでした'); }
+  $('impPaste').hidden = false; $('impMsg').textContent = '';
+});
+$('impLoad').addEventListener('click', () => {
+  let o = null; try { o = parseJson($('impAnswer').value.trim()); } catch (e) {}
+  if (!o) { $('impMsg').textContent = '読み取れませんでした。AIの答えを最初から最後まで全部コピーして貼ってください'; return; }
+  setImport(o);
+});
+$('impPreview').addEventListener('click', e => { if (e.target.id === 'impSave') saveImport(); });
 $('copyCsv').addEventListener('click', async () => {
   const cols = [['日付', 'date'], ['入水', 'start'], ['終了', 'end'], ['時間帯', 'timeOfDay'], ['ポイント', 'spot'], ['ボード', 'board'], ['スタンス', 'stance'], ['天気', 'weather'], ['サイズ', 'size'], ['うねり', 'swellDir'], ['周期', 'period'], ['風', 'wind'], ['風の強さ', 'windStr'], ['潮', 'tide'], ['予報', 'forecast'],
     ['テーマ', 'theme'], ['達成度', 'ach'], ['挑戦', 'takeoffs'], ['キャッチ', 'caught'], ['立てた', 'rides'], ['波の種類', 'waveType'], ['パドル', 'paddle'], ['いちばん長い波', 'longest'], ['失敗の原因', 'falls'],

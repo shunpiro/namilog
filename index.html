@@ -348,9 +348,24 @@ legend{font-size:14px;color:var(--mute);font-weight:600;margin-bottom:6px;paddin
     </section>
 
     <section class="card">
+      <h2>これまでの記録を取り込む</h2>
+      <div class="gbody">
+        <p class="hint">アプリを使う前のメモ・日記・自分宛てのメッセージなどを、そのまま貼り付けてください。AIが1回ずつの記録に分けます。書いていないこと（波の高さ・本数など）は空欄のままです。</p>
+        <label class="f">メモ<textarea id="impText" rows="8" placeholder="例：10/18 Canoes。白波で3本立てた。パドルが遅れて波に置いていかれた。次は早めにパドルを始める"></textarea></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri" type="button" id="impAi">AIコーチで変換</button><button class="btn" type="button" id="impCopy">いつものAIで変換</button></div>
+        <div class="paste" id="impPaste" hidden>
+          <p>① 指示書をコピーしました → ChatGPT・Claude・Geminiなど、いつも使っているAIに貼り付け<br>② 返ってきた答え（{ で始まる文字）を全部コピーして、下に貼って「読み込む」</p>
+          <textarea id="impAnswer" placeholder="AIの答えをここに貼り付け"></textarea>
+          <button class="btn pri" type="button" id="impLoad">読み込む</button>
+        </div>
+        <p class="hint" id="impMsg" aria-live="polite"></p>
+        <div id="impPreview"></div>
+      </div>
+    </section>
+
+    <section class="card">
       <h2>データ</h2>
       <div class="gbody">
-        <button class="btn" type="button" id="importSeed">これまでの記録を取り込む（4回分＋プロフィール）</button>
         <button class="btn" type="button" id="copyCsv">全記録をCSVでコピー</button>
         <button class="btn" type="button" id="logout">ログアウト</button>
         <p class="hint" id="whoami"></p>
@@ -365,7 +380,6 @@ legend{font-size:14px;color:var(--mute);font-weight:600;margin-bottom:6px;paddin
 <!-- Supabase（データベース）を使うための道具 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
-<script src="seed.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
