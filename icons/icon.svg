@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F2547A"/><stop offset="0.45" stop-color="#FF8A5C"/><stop offset="0.8" stop-color="#FFC36B"/></linearGradient>
+<linearGradient id="sun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF1A8"/><stop offset="1" stop-color="#FFD36B"/></linearGradient>
+<linearGradient id="wave" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3FE0D0"/><stop offset="1" stop-color="#0FA3B1"/></linearGradient>
+<linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14B8C4"/><stop offset="1" stop-color="#0A7F99"/></linearGradient>
+</defs>
+<rect width="1024" height="1024" fill="url(#sky)"/>
+<circle cx="560" cy="400" r="235" fill="url(#sun)"/>
+<!-- big wave -->
+<path d="M-20 1044 L-20 640 C160 600 360 470 560 430 C770 390 960 500 925 650 C900 760 780 780 735 705 C705 650 765 610 812 640 C770 665 775 705 810 708 C735 770 690 870 720 1044 Z" fill="url(#wave)"/>
+<path d="M560 430 C770 390 960 500 925 650 C900 760 780 780 735 705 C705 650 765 610 812 640 C845 595 850 545 805 505 C735 450 640 440 560 430 Z" fill="#FFFFFF"/>
+<!-- surfer -->
+<g transform="translate(410 712) rotate(-14) scale(1.28)">
+<path d="M-165 0 C-150 -30 120 -40 165 -8 C170 0 165 10 150 14 C60 36 -120 34 -158 14 C-170 8 -168 4 -165 0 Z" fill="#FFF7EA"/>
+<path d="M-160 4 C-60 -6 80 -10 166 -4" stroke="#FF6F61" stroke-width="10" fill="none"/>
+<g stroke="#1D2F4F" stroke-linecap="round" stroke-linejoin="round" fill="none">
+<line x1="2" y1="-130" x2="-34" y2="-82" stroke-width="27"/>
+<line x1="-34" y1="-82" x2="-66" y2="-30" stroke-width="21"/>
+<line x1="26" y1="-128" x2="74" y2="-86" stroke-width="27"/>
+<line x1="74" y1="-86" x2="64" y2="-30" stroke-width="21"/>
+<line x1="26" y1="-226" x2="-22" y2="-196" stroke-width="17"/>
+<line x1="-22" y1="-196" x2="-76" y2="-206" stroke-width="13"/>
+<line x1="60" y1="-224" x2="102" y2="-206" stroke-width="17"/>
+<line x1="102" y1="-206" x2="146" y2="-218" stroke-width="13"/>
+</g>
+<g fill="#1D2F4F">
+<path d="M22 -236 C40 -244 60 -240 70 -228 C60 -196 46 -160 36 -128 C24 -118 6 -118 -4 -128 C0 -166 8 -204 22 -236 Z"/>
+<ellipse cx="-72" cy="-26" rx="20" ry="8"/>
+<ellipse cx="70" cy="-26" rx="20" ry="8"/>
+<circle cx="52" cy="-268" r="25"/>
+<path d="M26 -280 C34 -300 66 -302 80 -284 C70 -290 58 -288 50 -284 C44 -292 34 -292 26 -280 Z"/>
+</g>
+</g>
+<!-- front sea -->
+<path d="M-20 1044 L-20 880 Q110 830 240 880 Q370 930 500 880 Q630 830 760 880 Q890 930 1044 880 L1044 1044 Z" fill="url(#sea)"/>
+</svg>

@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>波ログ</title>
+<!-- ホーム画面に追加したとき「アプリ」として開くための設定 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="波ログ">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a3550">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+/* ===== 【CSS】見た目のルール。ここの色を変えるとアプリ全体の色が変わります ===== */
+:root{color-scheme:light dark;
+--bg:light-dark(#f3f7f8,#06131a);--paper:light-dark(#fff,#0d212b);
+--ink:light-dark(#0c1f2c,#e7f0f5);--mute:light-dark(#4f6573,#98b0bf);
+--line:light-dark(#d8e2e8,#1d3a48);--chip:light-dark(#eef4f6,#12303c);
+--sea:#0a3550;--teal:light-dark(#0e9aa7,#2fd0c6);--foam:#d4f1f2;
+--coral:light-dark(#e2553f,#ff7b5d);--sand:light-dark(#fff3e6,#2a1f17);
+--safe-t:env(safe-area-inset-top);--safe-b:env(safe-area-inset-bottom)}
+*{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;overflow-x:clip;overscroll-behavior-y:none}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--coral);outline-offset:2px}
+[hidden]{display:none!important}
+.wrap{max-width:1080px;margin:0 auto}
+.band{padding:20px max(4vw,16px)}
+
+/* ヘッダー（紺の帯）。iPhoneの時計の下まで色を伸ばす */
+.top{background:linear-gradient(180deg,var(--sea),#0c4a66);color:#fff;padding-top:calc(14px + var(--safe-t));padding-bottom:0}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.top h1{font-size:30px;line-height:1.1;margin:0;font-weight:900;display:flex;align-items:center;gap:10px}
+.top h1 img{width:34px;height:34px;border-radius:9px}
+.gear{width:44px;height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;font-size:20px;display:grid;place-items:center}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:16px}
+.stat b{display:block;font-size:clamp(22px,6vw,34px);line-height:1.1;font-weight:900;white-space:nowrap}
+.stat span{font-size:12px;color:var(--foam)}
+.fig{position:relative;height:110px;margin:10px calc(-1*max(4vw,16px)) 0}
+.fig>svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.figcap{position:absolute;right:max(4vw,16px);top:0;font-size:12px;color:var(--foam)}
+@media(max-width:600px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* カード */
+h2{font-size:21px;line-height:1.25;margin:0 0 12px;font-weight:900}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:18px}
+.status{font-size:13px;color:var(--mute);margin:0 0 10px;display:flex;gap:8px;align-items:center}
+.status i{width:8px;height:8px;border-radius:50%;background:var(--teal);flex:none}
+.status.bad i{background:var(--coral)}
+.hw{background:var(--sand);border-radius:14px;padding:12px 14px;margin-bottom:12px;display:grid;gap:2px}
+.hw small{font-size:13px;color:var(--mute)}
+.hw b{font-size:18px;line-height:1.4}
+.big{width:100%;min-height:56px;border:0;border-radius:16px;background:var(--coral);color:#fff;font-weight:800;font-size:18px}
+
+/* フォーム */
+form{display:grid;gap:14px}
+details.grp{border-top:1px solid var(--line);padding-top:12px}
+details.grp:first-of-type{border-top:0;padding-top:0}
+details.grp>summary{list-style:none;cursor:pointer;font-size:16px;font-weight:900;color:var(--teal);min-height:40px;display:flex;align-items:center;justify-content:space-between}
+details.grp>summary::-webkit-details-marker{display:none}
+details.grp>summary::after{content:"＋";font-size:18px;color:var(--mute)}
+details.grp[open]>summary::after{content:"−"}
+.gbody{display:grid;gap:14px;padding:6px 0 4px}
+.row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media(max-width:600px){.row{grid-template-columns:repeat(2,minmax(0,1fr))}.row .w2{grid-column:1/-1}}
+.f{display:grid;gap:4px;font-size:14px;color:var(--mute);font-weight:600}
+input[type=text],input[type=email],input[type=password],input[type=date],input[type=time],input[type=number],input[type=search],textarea,select{width:100%;min-height:46px;padding:10px 12px;font-size:16px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);font-weight:400}
+input[type=date],input[type=time]{-webkit-appearance:none;appearance:none}
+textarea{min-height:80px;resize:vertical;line-height:1.5}
+fieldset{border:0;margin:0;padding:0}
+legend{font-size:14px;color:var(--mute);font-weight:600;margin-bottom:6px;padding:0}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chips label{position:relative}
+.chips input{position:absolute;opacity:0;inset:0;margin:0}
+.chips span{display:inline-flex;align-items:center;min-height:42px;padding:0 13px;border-radius:999px;background:var(--chip);border:1px solid var(--line);font-size:15px;white-space:nowrap;font-weight:500;color:var(--ink)}
+.chips input:checked+span{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:700}
+.chips.lv input:checked+span{background:var(--coral);border-color:var(--coral)}
+.chips input:focus-visible+span{outline:3px solid var(--coral);outline-offset:2px}
+.stepper{display:flex;gap:6px}
+.stepper input{flex:1 1 50px;text-align:center;padding:0 4px}
+.stepper button{width:46px;min-height:46px;border:1px solid var(--line);border-radius:12px;background:var(--chip);font-size:20px;flex:none}
+.presets{display:flex;flex-wrap:wrap;gap:6px}
+.presets button{min-height:34px;padding:0 11px;border-radius:999px;border:1px dashed var(--line);background:transparent;font-size:13px;color:var(--mute)}
+.hint{font-size:13px;color:var(--mute);margin:0;font-weight:400}
+.media{display:flex;flex-wrap:wrap;gap:8px}
+.thumb{position:relative;width:80px;height:80px;border-radius:12px;overflow:hidden;background:var(--chip);flex:none;border:0;padding:0}
+.thumb img,.thumb video{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .x{position:absolute;top:3px;right:3px;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:15px;display:grid;place-items:center}
+.thumb .play{position:absolute;right:5px;bottom:5px;background:rgba(0,0,0,.6);color:#fff;border-radius:6px;font-size:11px;padding:0 5px}
+.thumb.up{display:grid;place-items:center;font-size:12px;color:var(--mute)}
+.addm{position:relative;display:grid;place-items:center;width:80px;height:80px;border-radius:12px;border:2px dashed var(--line);color:var(--mute);font-size:12px;text-align:center;line-height:1.3;cursor:pointer}
+.addm input{position:absolute;opacity:0;width:1px;height:1px}
+.actions{display:flex;gap:8px;position:sticky;bottom:0;background:var(--paper);padding:12px 0 calc(12px + var(--safe-b));margin:0 -2px -18px;border-top:1px solid var(--line);z-index:2}
+.btn{min-height:48px;padding:0 16px;border-radius:12px;border:1px solid var(--line);background:var(--chip);font-weight:700;white-space:nowrap}
+.btn.pri{background:var(--teal);border-color:var(--teal);color:#fff;flex:1}
+.btn.cor{background:var(--coral);border-color:var(--coral);color:#fff}
+.btn.icon{width:48px;padding:0;flex:none;font-size:20px}
+
+/* 日誌 */
+.toolbar{display:flex;gap:8px;margin-bottom:8px}
+.toolbar input{flex:1}
+.log{display:grid;grid-template-columns:58px minmax(0,1fr);gap:12px;padding:16px 0;border-top:1px solid var(--line)}
+.log:first-child{border-top:0}
+.when b{display:block;font-size:21px;line-height:1.1;font-weight:900}
+.when span{font-size:12px;color:var(--mute);white-space:nowrap}
+.log h3{margin:0;font-size:18px;line-height:1.3;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.pill{font-size:12px;font-weight:700;border-radius:6px;padding:1px 7px;white-space:nowrap;background:var(--teal);color:#fff}
+.pill.a{background:var(--sea)}.pill.b{background:#7aa6b8}
+.meta{margin:4px 0 0;font-size:14px;color:var(--mute)}
+.line{margin:6px 0 0;font-size:15px;overflow-wrap:anywhere}
+.line small{color:var(--mute);font-size:13px;margin-right:4px}
+.tag{font-size:12px;font-weight:700;border-radius:6px;padding:1px 7px;background:var(--sand);white-space:nowrap;margin-left:4px}
+.memo{margin:6px 0 0;font-size:15px;white-space:pre-wrap;overflow-wrap:anywhere}
+.body{margin:6px 0 0;font-size:14px;background:var(--sand);border-radius:10px;padding:6px 10px}
+.note{font-size:12px;color:var(--mute)}
+.st{color:var(--coral);white-space:nowrap;font-size:15px;letter-spacing:1px}
+.foot2{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+.mini{min-height:40px;min-width:44px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:transparent;font-size:14px}
+.mini.warn{background:var(--coral);border-color:var(--coral);color:#fff}
+.empty{text-align:center;padding:22px 8px;color:var(--mute);font-size:15px}
+.empty b{display:block;color:var(--ink);font-size:17px;margin-bottom:4px}
+
+/* コーチ */
+.coach{margin-top:10px;border:1px solid var(--line);border-left:4px solid var(--teal);border-radius:12px;background:var(--bg)}
+.coach>summary{list-style:none;cursor:pointer;padding:10px 12px;min-height:44px;display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:15px}
+.coach>summary::-webkit-details-marker{display:none}
+.coach>summary::after{content:"開く";font-size:13px;color:var(--mute);font-weight:500}
+.coach[open]>summary::after{content:"閉じる"}
+.cb{padding:0 12px 12px;display:grid;gap:10px;font-size:15px}
+.cb p{margin:0}.cb h4{margin:0;font-size:13px;color:var(--mute)}
+.cb ul,.cb ol{margin:0;padding-left:1.3em;display:grid;gap:6px}
+.cb ol b{display:block}
+.cb .free{white-space:pre-wrap}
+.hwc{display:flex;flex-wrap:wrap;gap:6px}
+.hwc button{min-height:40px;padding:4px 12px;border-radius:10px;border:1px solid var(--coral);background:transparent;font-size:14px;text-align:left}
+.hwc button.on{background:var(--coral);color:#fff}
+.asks{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.ask{min-height:42px;padding:0 14px;border-radius:10px;border:1px solid var(--teal);background:transparent;color:var(--teal);font-weight:700;font-size:14px}
+.thinking{margin-top:10px;font-size:14px;color:var(--mute);display:flex;gap:8px;align-items:center}
+.thinking i{width:10px;height:10px;border-radius:50%;background:var(--teal);flex:none}
+@media(prefers-reduced-motion:no-preference){.thinking i{animation:bob 1s ease-in-out infinite alternate}@keyframes bob{to{transform:translateY(-5px)}}}
+.err{margin-top:8px;font-size:14px;color:var(--coral)}
+.paste{display:grid;gap:8px;margin-top:10px;padding:12px;border-radius:12px;background:var(--chip)}
+.paste p{margin:0;font-size:14px}
+.paste a{color:var(--teal);font-weight:700}
+
+/* 右の列 */
+.grid2{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:18px;align-items:start}
+.col{display:grid;gap:18px}
+@media(max-width:860px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.tm{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;padding:10px 0;border:0;border-top:1px solid var(--line);width:100%;text-align:left;background:none}
+.tm:first-of-type{border-top:0}
+.tm b{font-size:15px}
+.dots{grid-column:1/-1;display:flex;gap:5px;align-items:flex-end;height:28px}
+.dots i{width:14px;border-radius:4px 4px 2px 2px;background:var(--coral);flex:none}
+.num{text-align:right;white-space:nowrap;font-size:13px;color:var(--mute)}
+.skills{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.skills li{display:grid;grid-template-columns:3.4em minmax(0,1fr);gap:8px;font-size:15px}
+.skills time{font-weight:800;color:var(--teal);white-space:nowrap}
+.spot{display:grid;grid-template-columns:minmax(0,7em) minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 0;font-size:15px}
+.barx{height:10px;border-radius:5px;background:var(--chip);overflow:hidden}
+.barx i{display:block;height:100%;background:var(--teal)}
+
+/* ログイン・設定 */
+.login{min-height:100dvh;display:grid;place-items:center;padding:24px 16px calc(24px + var(--safe-b));background:linear-gradient(180deg,#f2547a 0%,#ff8a5c 45%,#ffc36b 75%,#2fd0c6 75.2%,#0e9aa7 100%)}
+.login .card{width:min(420px,100%);display:grid;gap:14px}
+.login img{width:84px;height:84px;border-radius:20px;justify-self:center;box-shadow:0 6px 20px rgba(0,0,0,.2)}
+.login h1{margin:0;text-align:center;font-size:30px}
+.login p{margin:0;font-size:14px;color:var(--mute);text-align:center}
+.sheet{position:fixed;inset:0;background:var(--bg);z-index:40;overflow-y:auto;padding-bottom:calc(30px + var(--safe-b))}
+.sheet .top{padding-bottom:16px}
+.sheet section{margin-top:16px}
+.sheet .gbody{padding:0}
+.sheet .btn{white-space:normal;padding-block:8px;line-height:1.35}
+.toast{position:fixed;left:50%;bottom:calc(18px + var(--safe-b));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 12px 10px 16px;border-radius:12px;display:none;gap:10px;align-items:center;max-width:calc(100% - 28px);z-index:60;font-size:15px}
+.toast.on{display:flex}
+.toast button{min-height:38px;border:0;border-radius:8px;background:var(--coral);color:#fff;padding:0 12px;font-weight:700;flex:none}
+.lb{position:fixed;inset:0;background:rgba(3,12,18,.94);display:none;place-items:center;z-index:50;padding:16px}
+.lb.on{display:grid}
+.lb img,.lb video{max-width:100%;max-height:85dvh;border-radius:10px}
+.lb button{position:absolute;top:calc(12px + var(--safe-t));right:12px;width:46px;height:46px;border-radius:50%;border:0;background:#fff;color:#0c1f2c;font-size:22px}
+</style>
+</head>
+<body>
+
+<!-- ===== 【HTML】画面の骨組み ===== -->
+
+<!-- ログイン画面 -->
+<div class="login" id="loginView" hidden>
+  <form class="card" id="loginForm">
+    <img src="icons/icon-180.png" alt="">
+    <h1>波ログ</h1>
+    <p id="loginMsg">メールアドレスとパスワードでログイン</p>
+    <label class="f">メールアドレス<input type="email" name="email" autocomplete="email" required></label>
+    <label class="f">パスワード（6文字以上）<input type="password" name="password" autocomplete="current-password" minlength="6" required></label>
+    <button class="big" type="submit" id="loginBtn">ログイン</button>
+    <button class="btn" type="button" id="signupBtn">はじめて使う（アカウントを作る）</button>
+  </form>
+</div>
+
+<!-- 設定がまだのときの案内 -->
+<div class="login" id="setupView" hidden>
+  <div class="card">
+    <img src="icons/icon-180.png" alt="">
+    <h1>あと少し！</h1>
+    <p>config.js に Supabase の URL と anon key を入れてください。手順は README.md の「ステップ2」にあります。</p>
+  </div>
+</div>
+
+<!-- メイン画面 -->
+<div id="appView" hidden>
+<header class="band top">
+  <div class="wrap">
+    <div class="bar"><h1><img src="icons/icon-180.png" alt="">波ログ</h1><button class="gear" id="openSettings" type="button" aria-label="設定">⚙︎</button></div>
+    <div class="stats" id="stats"></div>
+  </div>
+  <div class="fig" id="fig"><svg id="wave" aria-hidden="true"></svg><span class="figcap" id="figcap"></span></div>
+</header>
+
+<main class="band">
+  <div class="wrap" style="display:grid;gap:18px">
+    <section class="card" aria-label="記録する">
+      <p class="status" id="status"><i></i><span>読み込み中…</span></p>
+      <div id="homework"></div>
+      <button class="big" id="openForm" type="button">＋ 今日のセッションを記録</button>
+
+      <form id="form" autocomplete="off" hidden>
+        <details class="grp" open><summary>いつ・どこで</summary><div class="gbody">
+          <div class="row">
+            <label class="f">日付<input type="date" name="date" required></label>
+            <label class="f">入水<input type="time" name="start"></label>
+            <label class="f">終了<input type="time" name="end"></label>
+          </div>
+          <fieldset><legend>時間帯（時刻がわからないとき）</legend><div class="chips" data-chips="timeOfDay"></div></fieldset>
+          <div class="row2">
+            <label class="f">ポイント<input type="text" name="spot" list="spotList" placeholder="例：Canoes" required></label>
+            <label class="f">ボード<input type="text" name="board" list="boardList" placeholder="例：10'0 ソフト"></label>
+          </div>
+          <fieldset><legend>スタンス</legend><div class="chips" data-chips="stance"></div></fieldset>
+        </div></details>
+
+        <details class="grp" open><summary>コンディション</summary><div class="gbody">
+          <fieldset><legend>天気</legend><div class="chips" data-chips="weather"></div></fieldset>
+          <fieldset><legend>波のサイズ（体感）</legend><div class="chips" data-chips="size"></div></fieldset>
+          <fieldset><legend>うねりの向き（どこから来たか）</legend><div class="chips" data-chips="swellDir"></div></fieldset>
+          <div class="row">
+            <label class="f">周期（秒）<input type="number" name="period" min="0" max="30" inputmode="numeric" placeholder="例：12"></label>
+          </div>
+          <fieldset><legend>風（岸に対して）</legend><div class="chips" data-chips="wind"></div></fieldset>
+          <fieldset><legend>風の強さ</legend><div class="chips" data-chips="windStr"></div></fieldset>
+          <fieldset><legend>潮</legend><div class="chips" data-chips="tide"></div></fieldset>
+          <label class="f">予報メモ（実際の波とは別に）<input type="text" name="forecast" placeholder="例：南岸 2〜3ft、東の風"></label>
+        </div></details>
+
+        <details class="grp" open><summary>今日のテーマ</summary><div class="gbody">
+          <label class="f">練習テーマ<input type="text" name="theme" list="themeList" placeholder="例：座ったまま180度ターン"></label>
+          <div class="presets" id="themePresets"></div>
+          <fieldset><legend>テーマの達成度</legend><div class="chips lv" data-chips="ach"></div></fieldset>
+        </div></details>
+
+        <details class="grp" open><summary>乗った波</summary><div class="gbody">
+          <div class="row">
+            <div class="f">テイクオフに挑戦<div class="stepper" data-step-for="takeoffs"></div></div>
+            <div class="f">波をキャッチ<div class="stepper" data-step-for="caught"></div></div>
+            <div class="f w2">立って滑れた<div class="stepper" data-step-for="rides"></div></div>
+          </div>
+          <fieldset><legend>乗った波の種類（A＝崩れる前／B＝白波）</legend><div class="chips" data-chips="waveType"></div></fieldset>
+          <fieldset><legend>パドリングの感覚</legend><div class="chips" data-chips="paddle"></div></fieldset>
+          <label class="f">いちばん長く乗れた波<textarea name="longest" placeholder="例：早めにパドルを始めたら、波が大きくなるところで滑り出せた"></textarea></label>
+          <fieldset><legend>落ちた・失敗した原因（いくつでも）</legend><div class="chips" data-multi="falls"></div></fieldset>
+        </div></details>
+
+        <details class="grp" open><summary>ふり返り</summary><div class="gbody">
+          <label class="f">新しくできるようになったこと<input type="text" name="newSkill" placeholder="例：座ったまま向きを変えられた"></label>
+          <label class="f">前回からの成長<input type="text" name="growth"></label>
+          <label class="f">次回の宿題（次に記録するとき上に出ます）<input type="text" name="next" placeholder="例：波が来る3秒前からパドル開始"></label>
+          <label class="f">気づき・気持ち<textarea name="memo"></textarea></label>
+          <label class="f">体の痛み・擦れ<input type="text" name="body" placeholder="例：胸の擦れなし（ラッシュガード着用）"></label>
+          <label class="f">英語メモ（サーフィン用語・聞きたいこと）<textarea name="english" placeholder="例：pearling＝ノーズが刺さること"></textarea></label>
+          <fieldset><legend>満足度</legend><div class="chips" data-chips="rate"></div></fieldset>
+          <div class="f">写真・動画
+            <div class="media" id="formMedia"></div>
+            <p class="hint">写真は自動で小さくして保存。動画は1本50MBまで（短めに）。コーチは写真を最大3枚見ます。</p>
+          </div>
+        </div></details>
+
+        <div class="actions">
+          <button class="btn pri" type="submit" data-coach="1" id="saveCoach">保存＋コーチ</button>
+          <button class="btn" type="submit" id="saveBtn">保存だけ</button>
+          <button class="btn icon" type="button" id="cancelBtn" aria-label="閉じる">×</button>
+        </div>
+      </form>
+      <datalist id="spotList"></datalist><datalist id="boardList"></datalist><datalist id="themeList"></datalist>
+    </section>
+
+    <div class="grid2">
+      <section class="card" aria-labelledby="h-log">
+        <h2 id="h-log">セッション日誌</h2>
+        <div class="toolbar"><input type="search" id="q" placeholder="ポイント・テーマ・メモで検索" aria-label="検索"></div>
+        <div id="list"></div>
+      </section>
+      <div class="col">
+        <section class="card"><h2>できるようになったこと</h2><div id="skills"></div></section>
+        <section class="card"><h2>テーマ別の上達</h2><div id="growthBox"></div></section>
+        <section class="card"><h2>ポイント別</h2><div id="spots"></div></section>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+
+<!-- 設定画面 -->
+<div class="sheet" id="settings" hidden>
+  <header class="band top"><div class="wrap bar"><h1>設定</h1><button class="gear" id="closeSettings" type="button" aria-label="閉じる">×</button></div></header>
+  <div class="band"><div class="wrap" style="display:grid;gap:16px">
+    <section class="card">
+      <h2>AIコーチ（Gemini・無料枠）</h2>
+      <div class="gbody">
+        <p class="hint">Google AI Studio で作った API キーを貼ります。キーはこのスマホの中にだけ保存され、公開されません。無料枠で送った記録・写真は Google のサービス改善に使われることがあります。</p>
+        <label class="f">Gemini API キー<input type="password" id="gKey" autocomplete="off" placeholder="AIza..."></label>
+        <label class="f">モデル（ふつうは変更不要。使えないときは自動で選び直します）<input type="text" id="gModel"></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri" type="button" id="gSave">保存してテスト</button></div>
+        <p class="hint" id="gMsg"></p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>わたしのサーフィン（コーチが読みます）</h2>
+      <form id="profileForm" class="gbody">
+        <label class="f">レベル<textarea name="level"></textarea></label>
+        <label class="f">よく行く場所<input type="text" name="spots"></label>
+        <label class="f">スタンス<input type="text" name="stance"></label>
+        <label class="f">ボード<textarea name="board"></textarea></label>
+        <label class="f">波A・Bの区別<textarea name="waveAB"></textarea></label>
+        <label class="f">できるようになったこと<textarea name="canDo" rows="6"></textarea></label>
+        <label class="f">今の課題<textarea name="issues" rows="8"></textarea></label>
+        <label class="f">練習目標（優先順）<textarea name="goals" rows="8"></textarea></label>
+        <label class="f">用具・購入検討<textarea name="gear"></textarea></label>
+        <label class="f">サーフィンへの思い<textarea name="why"></textarea></label>
+        <button class="btn pri" type="submit">プロフィールを保存</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>データ</h2>
+      <div class="gbody">
+        <button class="btn" type="button" id="importSeed">これまでの記録を取り込む（4回分＋プロフィール）</button>
+        <button class="btn" type="button" id="copyCsv">全記録をCSVでコピー</button>
+        <button class="btn" type="button" id="logout">ログアウト</button>
+        <p class="hint" id="whoami"></p>
+      </div>
+    </section>
+  </div></div>
+</div>
+
+<div class="toast" id="toast" role="status"><span id="toastMsg"></span><button type="button" id="undo">元に戻す</button></div>
+<div class="lb" id="lb" role="dialog" aria-label="写真・動画"><button type="button" id="lbClose" aria-label="閉じる">×</button><div id="lbBody"></div></div>
+
+<!-- Supabase（データベース）を使うための道具 -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="seed.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
