@@ -428,24 +428,46 @@ async function gemini(model, key, parts) {
   if (!text) { const e = new Error(j.promptFeedback?.blockReason ? 'blocked' : 'empty'); throw e; }
   return text;
 }
-async function pickModel(key) { // 使えるFlashモデルを自動で探す（モデル名は時々変わるため）
+// 使えるFlashモデルの一覧を、新しい順に取ってくる（lite=true なら軽い lite 版も後ろに入れる）
+async function listFlash(key, lite = false) {
   const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': key } });
   const j = await res.json(); if (!res.ok) throw new Error(j.error?.message || 'models');
   const names = (j.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => m.name.replace('models/', ''))
-    .filter(n => /flash/.test(n) && !/(lite|tts|live|image|audio|exp|preview|thinking|embed|transcribe)/.test(n));
+    .filter(n => /flash/.test(n) && !/(tts|live|image|audio|exp|preview|thinking|embed|transcribe)/.test(n) && (lite || !/lite/.test(n)));
   const ver = n => +(n.match(/(\d+(?:\.\d+)?)/)?.[1] || 0);
-  names.sort((a, b) => ver(b) - ver(a) || a.length - b.length);
+  const isLite = n => /lite/.test(n) ? 1 : 0;
+  names.sort((a, b) => isLite(a) - isLite(b) || ver(b) - ver(a) || a.length - b.length); // 通常版→lite版、それぞれ新しい順
+  return names;
+}
+async function pickModel(key) { // 使えるFlashモデルを自動で探す（モデル名は時々変わるため）
+  const names = await listFlash(key);
   if (!names[0]) throw new Error('使えるモデルが見つかりません');
   return names[0];
 }
+// 「混んでいる・回数オーバー」のエラーかどうか（503 high demand / 429 / 500）
+const isBusy = e => [429, 500, 503].includes(e.status) || /high demand|overloaded|unavailable|exhausted/i.test(e.message || '');
+const wait = ms => new Promise(r => setTimeout(r, ms));
 async function askGemini(parts) {
   const key = store.get('namilog-gkey'); if (!key) throw new Error('nokey');
   let model = store.get('namilog-gmodel') || DEFAULT_MODEL;
   try { return await gemini(model, key, parts); }
   catch (e) {
-    if (e.status !== 404 && !/not found|not supported/i.test(e.message)) throw e;
-    model = await pickModel(key); store.set('namilog-gmodel', model);
-    return await gemini(model, key, parts);
+    // モデルが見つからない → 使えるモデルを探して、設定ごと差し替える
+    if (e.status === 404 || /not found|not supported/i.test(e.message)) {
+      model = await pickModel(key); store.set('namilog-gmodel', model);
+      return await gemini(model, key, parts);
+    }
+    if (!isBusy(e)) throw e;
+    // 混んでいる → 2秒待って同じモデルでもう1回
+    await wait(2000);
+    try { return await gemini(model, key, parts); } catch (e2) { if (!isBusy(e2)) throw e2; }
+    // まだ混んでいる → 別のflash系（lite版も含む）を順に最大3つ試す。設定のモデルは変えない（一時的な混雑のため）
+    const others = (await listFlash(key, true).catch(() => [])).filter(n => n !== model).slice(0, 3);
+    for (const m of others) {
+      try { return await gemini(m, key, parts); }
+      catch (e3) { if (!isBusy(e3) && e3.status !== 404) throw e3; }
+    }
+    throw e; // 全部だめなら最初のエラーを出す
   }
 }
 const toB64 = blob => new Promise((ok, ng) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = ng; r.readAsDataURL(blob); });
