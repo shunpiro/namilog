@@ -463,11 +463,16 @@ async function askGemini(parts) {
     try { return await gemini(model, key, parts); } catch (e2) { if (!isBusy(e2)) throw e2; }
     // まだ混んでいる → 別のflash系（lite版も含む）を順に最大3つ試す。設定のモデルは変えない（一時的な混雑のため）
     const others = (await listFlash(key, true).catch(() => [])).filter(n => n !== model).slice(0, 3);
+    const tried = [model];
     for (const m of others) {
+      tried.push(m);
       try { return await gemini(m, key, parts); }
       catch (e3) { if (!isBusy(e3) && e3.status !== 404) throw e3; }
     }
-    throw e; // 全部だめなら最初のエラーを出す
+    // 全部だめなら、どのモデルを試したかを添えてエラーを出す（原因を調べやすくするため）
+    e.busy = true;
+    e.message = `混んでいて使えませんでした（試したモデル：${tried.join('、')}）。少し時間をおくか「Claudeで聞く」を使ってください`;
+    throw e;
   }
 }
 const toB64 = blob => new Promise((ok, ng) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = ng; r.readAsDataURL(blob); });
@@ -492,7 +497,8 @@ async function askCoach(id) {
     openAdv.add(id);
   } catch (e) {
     const m = e.message || '';
-    coachErr[id] = e.status === 429 || /quota|exhausted/i.test(m) ? '無料枠の回数制限に当たりました。少し時間をおくか、「Claudeで聞く」を使ってください'
+    coachErr[id] = e.busy ? m // 混雑で全モデルだめだったとき：試したモデル名入りのメッセージをそのまま出す
+      : e.status === 429 || /quota|exhausted/i.test(m) ? '無料枠の回数制限に当たりました。少し時間をおくか、「Claudeで聞く」を使ってください'
       : e.status === 400 && /key/i.test(m) || e.status === 403 ? 'APIキーが正しくないようです。⚙︎設定を確認してください'
       : m === 'blocked' ? 'この内容にはアドバイスが返りませんでした' : 'うまく受け取れませんでした（' + m.slice(0, 80) + '）';
   }

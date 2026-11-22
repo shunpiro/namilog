@@ -1,6 +1,6 @@
 // ===== サービスワーカー：アプリの画面をスマホに保存して、すばやく・電波が弱くても開けるようにする =====
 // アプリを更新したら、下の VERSION の数字を1つ上げてください（古い画面が残らないように）。
-const VERSION = 'namilog-v2';
+const VERSION = 'namilog-v3';
 const SHELL = ['./', './index.html', './app.js', './config.js', './seed.js', './manifest.webmanifest',
   './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png'];
 
