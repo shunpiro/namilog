@@ -229,11 +229,12 @@ form.addEventListener('submit', async e => {
   const btns = [$('saveBtn'), $('saveCoach')]; btns.forEach(b => b.disabled = true);
   try {
     const saved = await saveRec(rec);
+    console.log('保存できた', saved); // 確認用：保存したデータを開発者ツールのConsoleに出す
     if (old) dropMedia(origMedia.filter(o => !formMedia.some(m => m.path === o.path)));
     else store.set(DRAFT, '');
     closeForm(true); render();
     if (withCoach) { openAdv.add(saved.id); goTo(saved.id); askCoach(saved.id); }
-    else toast(old ? '変更を保存しました' : '記録しました。おつかれさま！');
+    else toast(old ? '変更を保存しました' : '記録しました。良いサーフィンライフを！');
   } catch (err) { toast('保存できませんでした（' + (err.message || 'エラー') + '）。下書きは残っています'); }
   btns.forEach(b => b.disabled = false);
 });
