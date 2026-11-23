@@ -31,10 +31,45 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pad = n => String(n).padStart(2, '0');
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
-const fmtH = m => { const h = Math.floor(m / 60), r = m % 60; return h ? `${h}時間${r ? r + '分' : ''}` : `${r}分`; };
-const DOW = '日月火水木金土';
 const store = { get: k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } },
   set: (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (e) {} } };
+
+/* 言語 ― 画面の文字は i18n.js の対応表から取り出す
+   決め方：設定で選んだ言語 → なければ端末の言語 → 対応していなければ英語                */
+const I18N = window.NAMILOG_I18N || { en: {} };
+const lang = (() => {
+  const saved = store.get('namilog-lang'); if (I18N[saved]) return saved;
+  const prefs = (navigator.languages?.length ? navigator.languages : [navigator.language || '']).map(l => String(l).slice(0, 2).toLowerCase());
+  return prefs.find(l => I18N[l]) || 'en';
+})();
+const TX = I18N[lang], EN = I18N.en || {};
+const fill = (s, v = {}) => String(s).replace(/\{(\w+)\}/g, (m, n) => v[n] ?? m); // {n} を数字などに置き換える
+const t = (k, v) => fill(TX[k] ?? EN[k] ?? k, v);                 // 画面の文字
+const optL = v => TX._opt?.[v] ?? v;                               // 選択肢の表示名（保存は日本語のまま）
+const lvL = (k, n) => (TX._level?.[k] || LEVEL[k])[n - 1];         // 1〜5段階の表示名
+const fld = k => TX._field?.[k] ?? EN._field?.[k] ?? k;            // 記録の項目名
+const pt = (k, v) => fill(TX._prompt?.[k] ?? EN._prompt?.[k] ?? '', v); // AIへの指示書の文
+const DOW = TX._dow || ['日', '月', '火', '水', '木', '金', '土'];
+const THEMES = TX._themes || PRESET_THEMES;
+const fmtH = m => { const h = Math.floor(m / 60), r = m % 60; return h ? t(r ? 'hm' : 'h', { h, m: r }) : t('m', { m: r }); };
+// 画面に最初からある文字を、選んだ言語に入れ替える（data-i18n＝文字、-ph＝入力欄の薄い例文、-aria＝読み上げ用の名前）
+function applyI18n() {
+  document.documentElement.lang = lang; document.title = t('app');
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => { el.innerHTML = t(el.dataset.i18nHtml); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
+  // 言語の切り替えボタン（ログイン画面と設定画面）。押したら覚えて、ページを読み込み直す
+  const names = window.NAMILOG_LANG_NAMES || {};
+  document.querySelectorAll('.langsw').forEach(el => {
+    el.innerHTML = Object.keys(I18N).map(c => `<button type="button" data-lang="${c}" class="${c === lang ? 'on' : ''}">${esc(names[c] || c)}</button>`).join('');
+  });
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-lang]'); if (!b || b.dataset.lang === lang) return;
+  store.set('namilog-lang', b.dataset.lang); location.reload();
+});
+applyI18n();
 const minutesBetween = (a, b) => { if (!a || !b) return null; const [h1, m1] = a.split(':').map(Number), [h2, m2] = b.split(':').map(Number); let d = (h2 * 60 + m2) - (h1 * 60 + m1); if (d < 0) d += 1440; return d; };
 function setStatus(t, bad) { $('status').className = 'status' + (bad ? ' bad' : ''); $('status').innerHTML = '<i></i><span>' + esc(t) + '</span>'; }
 
@@ -108,21 +143,21 @@ async function addFiles(files) {
       Object.assign(tmp, { path, kind }); await signMedia([tmp]);
     } catch (e) {
       formMedia = formMedia.filter(x => x !== tmp);
-      toast(e.message === 'too_large' ? '動画は50MBまでです。短く切ってください' : 'アップロードできませんでした（' + (e.message || 'エラー') + '）');
+      toast(e.message === 'too_large' ? t('tooLarge') : t('upFail', { e: e.message || 'error' }));
     }
     drawFormMedia();
   }
 }
 async function dropMedia(list) { const paths = list.map(m => m.path).filter(p => p && !p.startsWith('up')); if (paths.length) await sb.storage.from(BUCKET).remove(paths).catch(() => {}); }
 function thumbHtml(m, removable) {
-  if (m.kind === 'up') return `<div class="thumb up">送信中…</div>`;
+  if (m.kind === 'up') return `<div class="thumb up">${t('uploading')}</div>`;
   const u = esc(urlCache[m.path] || '');
   const inner = m.kind === 'video' ? `<video src="${u}#t=0.1" muted playsinline preload="metadata"></video><span class="play">▶</span>` : `<img src="${u}" alt="" loading="lazy">`;
-  return `<button type="button" class="thumb" data-view="${esc(m.path)}" data-kind="${m.kind}" aria-label="拡大">${inner}${removable ? `<span class="x" data-rm="${esc(m.path)}" role="button" aria-label="外す">×</span>` : ''}</button>`;
+  return `<button type="button" class="thumb" data-view="${esc(m.path)}" data-kind="${m.kind}" aria-label="${t('zoom')}">${inner}${removable ? `<span class="x" data-rm="${esc(m.path)}" role="button" aria-label="${t('remove')}">×</span>` : ''}</button>`;
 }
 function drawFormMedia() {
   $('formMedia').innerHTML = formMedia.map(m => thumbHtml(m, true)).join('') +
-    `<label class="addm">＋<br>写真・動画<input type="file" id="fileIn" accept="image/*,video/*" multiple></label>`;
+    `<label class="addm">${t('addMedia')}<input type="file" id="fileIn" accept="image/*,video/*" multiple></label>`;
 }
 $('formMedia').addEventListener('change', e => { if (e.target.id === 'fileIn' && e.target.files.length) addFiles([...e.target.files]); });
 $('formMedia').addEventListener('click', e => {
@@ -143,18 +178,19 @@ $('lb').addEventListener('click', e => { if (e.target.id === 'lb') closeViewer()
 /* ⑤ 記録フォーム ― チップを作り、開く・閉じる・下書き保存・保存する */
 const form = $('form');
 document.querySelectorAll('[data-chips]').forEach(el => {
+  // 保存する値（value）は日本語や数字のまま。見える文字（span）だけ選んだ言語にする
   const k = el.dataset.chips, lv = LEVEL[k], arr = lv || OPT[k];
-  el.innerHTML = arr.map((t, i) => `<label><input type="radio" name="${k}" value="${lv ? i + 1 : esc(t)}"><span>${esc(t)}</span></label>`).join('');
+  el.innerHTML = arr.map((v, i) => `<label><input type="radio" name="${k}" value="${lv ? i + 1 : esc(v)}"><span>${esc(lv ? lvL(k, i + 1) : optL(v))}</span></label>`).join('');
 });
 document.querySelectorAll('[data-multi]').forEach(el => {
   const k = el.dataset.multi;
-  el.innerHTML = OPT[k].map(t => `<label><input type="checkbox" name="${k}" value="${esc(t)}"><span>${esc(t)}</span></label>`).join('');
+  el.innerHTML = OPT[k].map(v => `<label><input type="checkbox" name="${k}" value="${esc(v)}"><span>${esc(optL(v))}</span></label>`).join('');
 });
 document.querySelectorAll('[data-step-for]').forEach(el => {
   const k = el.dataset.stepFor;
-  el.innerHTML = `<button type="button" data-step="-1" data-k="${k}" aria-label="1減らす">−</button><input type="number" name="${k}" min="0" max="200" inputmode="numeric"><button type="button" data-step="1" data-k="${k}" aria-label="1増やす">＋</button>`;
+  el.innerHTML = `<button type="button" data-step="-1" data-k="${k}" aria-label="${t('minus')}">−</button><input type="number" name="${k}" min="0" max="200" inputmode="numeric"><button type="button" data-step="1" data-k="${k}" aria-label="${t('plus')}">＋</button>`;
 });
-$('themePresets').innerHTML = PRESET_THEMES.map(t => `<button type="button" data-theme="${esc(t)}">${esc(t)}</button>`).join('');
+$('themePresets').innerHTML = THEMES.map(v => `<button type="button" data-theme="${esc(v)}">${esc(v)}</button>`).join('');
 $('themePresets').addEventListener('click', e => { const b = e.target.closest('[data-theme]'); if (b) { form.theme.value = b.dataset.theme; saveDraft(); } });
 // ラジオは「もう一度押すと解除」できるようにする（押す前に選ばれていたかを覚えておく）
 let wasChecked = null;
@@ -203,9 +239,9 @@ function openForm(rec) {
   origMedia = rec?.media ? [...rec.media] : []; formMedia = [...(base.media || [])];
   drawFormMedia();
   form.hidden = false; $('openForm').hidden = true; $('homework').hidden = true;
-  $('saveBtn').textContent = rec ? '変更を保存' : '保存だけ'; $('saveCoach').hidden = !!rec;
+  $('saveBtn').textContent = rec ? t('saveChanges') : t('saveOnly'); $('saveCoach').hidden = !!rec;
   $('saveBtn').classList.toggle('pri', !!rec);
-  if (draft && !rec) toast('書きかけの記録を戻しました');
+  if (draft && !rec) toast(t('draftBack'));
   form.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 function closeForm(saved) {
@@ -219,12 +255,12 @@ $('cancelBtn').addEventListener('click', () => closeForm(false));
 
 form.addEventListener('submit', async e => {
   e.preventDefault();
-  if (formMedia.some(m => m.kind === 'up')) { toast('写真・動画の送信が終わるまでお待ちください'); return; }
+  if (formMedia.some(m => m.kind === 'up')) { toast(t('waitUpload')); return; }
   const old = editing ? items.find(x => x.id === editing) : null;
   const rec = { ...readForm(), id: editing || undefined, updated: Date.now() };
   if (old?.advice) rec.advice = old.advice;
   for (const k of ['seedId', 'dateNote']) if (old?.[k]) rec[k] = old[k];
-  if (!rec.date || !rec.spot) { toast('日付とポイントは必須です'); return; }
+  if (!rec.date || !rec.spot) { toast(t('needDateSpot')); return; }
   const withCoach = e.submitter?.dataset.coach === '1';
   const btns = [$('saveBtn'), $('saveCoach')]; btns.forEach(b => b.disabled = true);
   try {
@@ -234,8 +270,8 @@ form.addEventListener('submit', async e => {
     else store.set(DRAFT, '');
     closeForm(true); render();
     if (withCoach) { openAdv.add(saved.id); goTo(saved.id); askCoach(saved.id); }
-    else toast(old ? '変更を保存しました' : '記録しました。良いサーフィンライフを！');
-  } catch (err) { toast('保存できませんでした（' + (err.message || 'エラー') + '）。下書きは残っています'); }
+    else toast(old ? t('changed') : t('saved'));
+  } catch (err) { toast(t('saveFail', { e: err.message || 'error' })); }
   btns.forEach(b => b.disabled = false);
 });
 
@@ -245,7 +281,7 @@ function toast(msg, undo) {
 }
 $('undo').addEventListener('click', async () => {
   const r = lastDeleted; lastDeleted = null; $('toast').classList.remove('on');
-  if (r) { const { id, ...rest } = r; await saveRec(rest).catch(() => toast('戻せませんでした')); render(); }
+  if (r) { const { id, ...rest } = r; await saveRec(rest).catch(() => toast(t('undoFail'))); render(); }
 });
 
 /* ⑥ 画面を描く ― データ(items)から毎回作り直す。これがアプリの心臓部 */
@@ -257,62 +293,62 @@ function render() {
   const all = sorted();
   const ym = today().slice(0, 7);
   const mins = all.reduce((s, x) => s + (x.mins || 0), 0), rides = all.reduce((s, x) => s + (x.rides || 0), 0);
-  $('stats').innerHTML = [[all.filter(x => x.date.startsWith(ym)).length + '回', '今月のセッション'], [all.length + '回', 'これまでの記録'],
-    [rides + '本', '立って滑れた'], [mins ? fmtH(mins) : '—', '海にいた時間']]
+  $('stats').innerHTML = [[t('times', { n: all.filter(x => x.date.startsWith(ym)).length }), t('statMonth')], [t('times', { n: all.length }), t('statAll')],
+    [t('rides', { n: rides }), t('statRides')], [mins ? fmtH(mins) : '—', t('statTime')]]
     .map(([b, s]) => `<div class="stat"><b>${b}</b><span>${s}</span></div>`).join('');
   const hw = all.find(x => x.next);
-  $('homework').innerHTML = hw && hw === all[0] ? `<div class="hw"><small>前回の宿題（${md(hw.date)} ${esc(hw.spot)}）</small><b>${esc(hw.next)}</b></div>` : '';
+  $('homework').innerHTML = hw && hw === all[0] ? `<div class="hw"><small>${esc(t('prevHw', { d: md(hw.date), s: hw.spot }))}</small><b>${esc(hw.next)}</b></div>` : '';
   $('spotList').innerHTML = uniq([...all.map(x => x.spot), ...PRESET_SPOTS]).map(s => `<option value="${esc(s)}">`).join('');
   $('boardList').innerHTML = uniq(all.map(x => x.board)).map(s => `<option value="${esc(s)}">`).join('');
-  $('themeList').innerHTML = uniq([...all.map(x => x.theme), ...PRESET_THEMES]).map(s => `<option value="${esc(s)}">`).join('');
+  $('themeList').innerHTML = uniq([...all.map(x => x.theme), ...THEMES]).map(s => `<option value="${esc(s)}">`).join('');
 
   const q = $('q').value.trim().toLowerCase();
   const shown = q ? all.filter(x => JSON.stringify(x).toLowerCase().includes(q)) : all;
   $('list').innerHTML = shown.length ? shown.map(logHtml).join('')
-    : q ? `<div class="empty"><b>見つかりませんでした</b>別のことばで検索してみてください</div>`
-      : `<div class="empty"><b>まだ記録がありません</b>上のボタンから記録するか、設定の「これまでの記録を取り込む」をどうぞ</div>`;
+    : q ? `<div class="empty"><b>${t('notFound')}</b>${t('notFoundSub')}</div>`
+      : `<div class="empty"><b>${t('noLogs')}</b>${t('noLogsSub')}</div>`;
 
   const sk = all.filter(x => x.newSkill);
   $('skills').innerHTML = sk.length ? `<ul class="skills">${sk.map(x => `<li><time>${md(x.date)}</time><span>${esc(x.newSkill)}</span></li>`).join('')}</ul>`
-    : `<div class="empty">「新しくできるようになったこと」を書くと、ここに積み上がります</div>`;
+    : `<div class="empty">${t('skillsEmpty')}</div>`;
 
   const th = {}; for (const x of [...all].reverse()) if (x.theme) (th[x.theme] ??= []).push(x);
   const tl = Object.entries(th).sort((a, b) => b[1].at(-1).date.localeCompare(a[1].at(-1).date)).slice(0, 8);
-  $('growthBox').innerHTML = tl.length ? tl.map(([k, l]) => { const last = l.at(-1); return `<button type="button" class="tm" data-q="${esc(k)}"><b>${esc(k)}</b><span class="num">${l.length}回${last.ach ? ' · ' + LEVEL.ach[last.ach - 1] : ''}</span>
+  $('growthBox').innerHTML = tl.length ? tl.map(([k, l]) => { const last = l.at(-1); return `<button type="button" class="tm" data-q="${esc(k)}"><b>${esc(k)}</b><span class="num">${t('spotTimes', { n: l.length })}${last.ach ? ' · ' + lvL('ach', last.ach) : ''}</span>
     <span class="dots" aria-hidden="true">${l.slice(-12).map(x => `<i style="height:${x.ach ? x.ach / 5 * 100 : 10}%;opacity:${x.ach ? 1 : .25}"></i>`).join('')}</span></button>`; }).join('')
-    : `<div class="empty">練習テーマを書くと、テーマごとの達成度の伸びが並びます</div>`;
+    : `<div class="empty">${t('growthEmpty')}</div>`;
 
   const by = {}; for (const x of all) { const o = (by[x.spot] ??= { n: 0, r: 0, rn: 0 }); o.n++; if (x.rate) { o.r += x.rate; o.rn++; } }
   const sp = Object.entries(by).sort((a, b) => b[1].n - a[1].n).slice(0, 8), max = sp[0]?.[1].n || 1;
-  $('spots').innerHTML = sp.length ? sp.map(([k, o]) => `<div class="spot"><span>${esc(k)}</span><span class="barx"><i style="width:${o.n / max * 100}%"></i></span><span class="num">${o.n}回${o.rn ? ' · ★' + (o.r / o.rn).toFixed(1) : ''}</span></div>`).join('')
-    : `<div class="empty">よく行くポイントがここに並びます</div>`;
+  $('spots').innerHTML = sp.length ? sp.map(([k, o]) => `<div class="spot"><span>${esc(k)}</span><span class="barx"><i style="width:${o.n / max * 100}%"></i></span><span class="num">${t('spotTimes', { n: o.n })}${o.rn ? ' · ★' + (o.r / o.rn).toFixed(1) : ''}</span></div>`).join('')
+    : `<div class="empty">${t('spotsEmpty')}</div>`;
   drawWave();
 }
 function logHtml(x) {
   const d = new Date(x.date + 'T00:00');
-  const time = x.start ? x.start + (x.end ? '–' + x.end : '') : (x.timeOfDay || '');
-  const swell = [x.swellDir ? x.swellDir + 'うねり' : '', x.period ? x.period + '秒' : ''].filter(Boolean).join(' ');
-  const wind = [x.wind, x.windStr && x.windStr !== '無風' ? '風' + x.windStr : x.windStr].filter(Boolean).join(' ');
-  const meta = [x.mins ? fmtH(x.mins) : '', x.weather, swell, wind, x.tide, x.board, x.stance].filter(Boolean).map(esc).join(' · ');
-  const counts = [x.takeoffs != null && x.takeoffs !== 0 ? `挑戦${x.takeoffs}` : '', x.caught ? `キャッチ${x.caught}` : '', x.rides ? `立って${x.rides}本` : ''].filter(Boolean).join(' / ');
-  const wt = x.waveType ? `<span class="pill ${x.waveType === 'A中心' ? 'a' : x.waveType === 'B中心' ? 'b' : ''}">${esc(x.waveType)}</span>` : '';
+  const time = x.start ? x.start + (x.end ? '–' + x.end : '') : optL(x.timeOfDay || '');
+  const swell = [x.swellDir ? t('swellOf', { d: optL(x.swellDir) }) : '', x.period ? t('sec', { n: x.period }) : ''].filter(Boolean).join(' ');
+  const wind = [optL(x.wind || ''), x.windStr && x.windStr !== '無風' ? t('windOf', { s: optL(x.windStr) }) : optL(x.windStr || '')].filter(Boolean).join(' ');
+  const meta = [x.mins ? fmtH(x.mins) : '', optL(x.weather || ''), swell, wind, optL(x.tide || ''), x.board, optL(x.stance || '')].filter(Boolean).map(esc).join(' · ');
+  const counts = [x.takeoffs != null && x.takeoffs !== 0 ? t('tries', { n: x.takeoffs }) : '', x.caught ? t('caughtN', { n: x.caught }) : '', x.rides ? t('ridesN', { n: x.rides }) : ''].filter(Boolean).join(' / ');
+  const wt = x.waveType ? `<span class="pill ${x.waveType === 'A中心' ? 'a' : x.waveType === 'B中心' ? 'b' : ''}">${esc(optL(x.waveType))}</span>` : '';
   const L = (label, v) => v ? `<p class="line"><small>${label}</small>${esc(v)}</p>` : '';
   const del = confirmId === x.id;
   return `<article class="log" id="log-${esc(x.id)}"><div class="when"><b>${d.getMonth() + 1}/${d.getDate()}</b><span>(${DOW[d.getDay()]}) ${esc(time)}</span></div>
-  <div><h3>${esc(x.spot)}${x.size ? `<span class="pill">${esc(x.size)}</span>` : ''}${wt}</h3>
+  <div><h3>${esc(x.spot)}${x.size ? `<span class="pill">${esc(optL(x.size))}</span>` : ''}${wt}</h3>
   ${x.dateNote ? `<p class="note">※ ${esc(x.dateNote)}</p>` : ''}
   ${meta ? `<p class="meta">${meta}</p>` : ''}
-  ${counts ? `<p class="meta">${esc(counts)}${x.paddle ? ' · パドル：' + LEVEL.paddle[x.paddle - 1] : ''}</p>` : ''}
-  ${x.theme ? `<p class="line"><small>テーマ</small>${esc(x.theme)}${x.ach ? `<span class="tag">${LEVEL.ach[x.ach - 1]}</span>` : ''}</p>` : ''}
-  ${L('いちばん長い波', x.longest)}${x.falls?.length ? L('失敗の原因', x.falls.join('、')) : ''}
-  ${L('できた！', x.newSkill)}${L('成長', x.growth)}${L('次回の宿題', x.next)}
+  ${counts ? `<p class="meta">${esc(counts)}${x.paddle ? ' · ' + esc(t('paddleOf', { s: lvL('paddle', x.paddle) })) : ''}</p>` : ''}
+  ${x.theme ? `<p class="line"><small>${t('themeL')}</small>${esc(x.theme)}${x.ach ? `<span class="tag">${esc(lvL('ach', x.ach))}</span>` : ''}</p>` : ''}
+  ${L(t('longestL'), x.longest)}${x.falls?.length ? L(t('fallsL'), x.falls.map(optL).join(t('listSep'))) : ''}
+  ${L(t('newSkillL'), x.newSkill)}${L(t('growthL'), x.growth)}${L(t('nextL'), x.next)}
   ${x.memo ? `<p class="memo">${esc(x.memo)}</p>` : ''}
-  ${x.body ? `<p class="body">体：${esc(x.body)}</p>` : ''}
-  ${L('英語メモ', x.english)}${L('予報', x.forecast)}
+  ${x.body ? `<p class="body">${esc(t('bodyL', { s: x.body }))}</p>` : ''}
+  ${L(t('englishL'), x.english)}${L(t('forecastL'), x.forecast)}
   ${x.media?.length ? `<div class="media" style="margin-top:8px">${x.media.map(m => thumbHtml(m, false)).join('')}</div>` : ''}
   ${coachHtml(x)}
-  <div class="foot2">${x.rate ? `<span class="st" aria-label="満足度${x.rate}">${'★'.repeat(x.rate)}${'☆'.repeat(5 - x.rate)}</span>` : '<span></span>'}
-  <span><button class="mini" data-edit="${esc(x.id)}">編集</button> <button class="mini${del ? ' warn' : ''}" data-del="${esc(x.id)}">${del ? '本当に削除' : '削除'}</button></span></div>
+  <div class="foot2">${x.rate ? `<span class="st" aria-label="${t('rateAria', { n: x.rate })}">${'★'.repeat(x.rate)}${'☆'.repeat(5 - x.rate)}</span>` : '<span></span>'}
+  <span><button class="mini" data-edit="${esc(x.id)}">${t('edit')}</button> <button class="mini${del ? ' warn' : ''}" data-del="${esc(x.id)}">${del ? t('delSure') : t('del')}</button></span></div>
   </div></article>`;
 }
 $('q').addEventListener('input', render);
@@ -331,7 +367,7 @@ $('list').addEventListener('click', async e => {
     const id = ds.del;
     if (confirmId !== id) { confirmId = id; render(); setTimeout(() => { if (confirmId === id) { confirmId = null; render(); } }, 4000); return; }
     confirmId = null; const r = items.find(x => x.id === id);
-    try { await deleteRec(id); lastDeleted = r; render(); toast('削除しました', true); } catch (err) { toast('削除できませんでした'); }
+    try { await deleteRec(id); lastDeleted = r; render(); toast(t('deleted'), true); } catch (err) { toast(t('delFail')); }
   }
 });
 function goTo(id) { setTimeout(() => document.getElementById('log-' + id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150); }
@@ -344,7 +380,7 @@ function drawWave() {
   const vals = recent.map(x => x.rides ?? x.caught ?? 0);
   const real = vals.filter(v => v > 0).length >= 2;
   const data = real ? vals : [1, 2, 1, 3, 2, 1, 2, 1];
-  $('figcap').textContent = real ? `最近${data.length}回の「立って滑れた本数」` : '記録するとここにうねりが描かれます';
+  $('figcap').textContent = real ? t('waveCap', { n: data.length }) : t('waveEmpty');
   const n = data.length, step = W / (n - 1), mx = Math.max(3, ...data), y = v => H - 16 - (v / mx) * (H - 40);
   const pts = data.map((v, i) => [i * step, y(v)]);
   const line = off => { let d = `M${-30 + off},${pts[0][1]} L${pts[0][0] + off},${pts[0][1]}`;
@@ -362,14 +398,18 @@ new ResizeObserver(drawWave).observe(fig);
 
 /* ⑧ AIコーチ ― 記録とプロフィールを「指示書（prompt）」にまとめて、Gemini（自動）か いつものAI（コピペ）に渡す
    ここの文章を書き換えると、コーチの性格や答え方が変わります                                   */
+// 1回分の記録を「項目名：値」の形にまとめる（項目名・選択肢は選んだ言語で。空の項目は省く）
 const brief = r => {
-  const o = { 日付: r.date + (r.dateNote ? `（${r.dateNote}）` : ''), 時間: r.start ? `${r.start}〜${r.end || ''}` : r.timeOfDay, ポイント: r.spot, ボード: r.board, スタンス: r.stance,
-    天気: r.weather, 波のサイズ体感: r.size, うねり: r.swellDir, 周期秒: r.period, 風: [r.wind, r.windStr].filter(Boolean).join(' '), 潮: r.tide, 予報メモ: r.forecast,
-    テーマ: r.theme, 達成度: r.ach ? `${r.ach}/5（${LEVEL.ach[r.ach - 1]}）` : '', テイクオフ挑戦: r.takeoffs, キャッチ: r.caught, 立って滑れた: r.rides,
-    波の種類: r.waveType, パドルの感覚: r.paddle ? LEVEL.paddle[r.paddle - 1] : '', いちばん長い波: r.longest, 失敗の原因: (r.falls || []).join('、'),
-    できるようになったこと: r.newSkill, 成長: r.growth, 次回の宿題: r.next, 気づき: r.memo, 体: r.body, 英語メモ: r.english, 満足度: r.rate ? r.rate + '/5' : '' };
-  for (const k in o) if (o[k] === '' || o[k] == null || o[k] === 0 && k !== '立って滑れた') delete o[k];
-  return o;
+  const o = [['date', r.date + (r.dateNote ? ` (${r.dateNote})` : '')], ['time', r.start ? `${r.start}–${r.end || ''}` : optL(r.timeOfDay || '')],
+    ['spot', r.spot], ['board', r.board], ['stance', optL(r.stance || '')], ['weather', optL(r.weather || '')], ['size', optL(r.size || '')],
+    ['swellDir', optL(r.swellDir || '')], ['period', r.period], ['wind', [r.wind, r.windStr].filter(Boolean).map(optL).join(' ')], ['tide', optL(r.tide || '')],
+    ['forecast', r.forecast], ['theme', r.theme], ['ach', r.ach ? `${r.ach}/5 (${lvL('ach', r.ach)})` : ''], ['takeoffs', r.takeoffs], ['caught', r.caught],
+    ['rides', r.rides], ['waveType', optL(r.waveType || '')], ['paddle', r.paddle ? lvL('paddle', r.paddle) : ''], ['longest', r.longest],
+    ['falls', (r.falls || []).map(optL).join(t('listSep'))], ['newSkill', r.newSkill], ['growth', r.growth], ['next', r.next], ['memo', r.memo],
+    ['body', r.body], ['english', r.english], ['rate', r.rate ? r.rate + '/5' : '']];
+  const out = {};
+  for (const [k, v] of o) if (!(v === '' || v == null || v === 0 && k !== 'rides')) out[fld(k)] = v;
+  return out;
 };
 function buildPrompt(x, forChat) {
   const key = r => r.date + (r.start || '');
@@ -377,44 +417,28 @@ function buildPrompt(x, forChat) {
   const same = x.theme ? past.filter(r => r.theme === x.theme).slice(0, 5) : [];
   const other = past.filter(r => !same.includes(r)).slice(0, 4);
   const prev = past[0];
-  const p = profile, P = (k, v) => v ? `- ${k}: ${v.replace(/\n/g, ' ／ ')}\n` : '';
-  const out = forChat
-    ? `次の形で、日本語で、読みやすく答えてください：
-【何が起きたか】1〜2文
-【考えられる原因】箇条書き2〜3個
-【次に試す具体的な行動】2〜3個（体のどこを・いつ・どうする）
-【次回の宿題の候補】3つ（各20文字前後）
-（写真があれば）【写真から】2〜3文`
-    : `次のJSONだけを返してください:
-{"happened":"何が起きたか（1〜2文）","causes":["考えられる原因",...2〜3個],"actions":[{"title":"短い見出し","detail":"体のどこを・いつ・どうするか（2〜3文）"},...2〜3個],"homework":["次回の宿題の候補（20文字前後）",...3個],"photo":"写真がなければ空文字","safety":"必要なときだけ一言。なければ空文字"}`;
-  return `あなたは経験豊富で、励まし上手なサーフィンコーチです。初心者の生徒がつけたサーフィン日誌の「今日のセッション」について、日本語でアドバイスしてください。
+  // 指示書の文章そのものは i18n.js の _prompt にある（言語ごとに、答えてほしい言語で書いてある）
+  const p = profile, P = k => p[k] ? `- ${t('pf_' + k)}: ${p[k].replace(/\n/g, ' / ')}\n` : '';
+  const J = r => JSON.stringify(brief(r)), none = pt('none');
+  return `${pt('coachIntro')}
 
-ルール:
-- ふり返りは「何が起きたか」「考えられる原因」「次に試す具体的な行動」の3つをはっきり分ける。
-- 今日のテーマ・達成度・本数・失敗の原因・メモを最も重視し、波・風・潮・ボードの条件も考えに入れる。
-- 同じテーマの過去の記録があれば、伸びている／止まっているに具体的に触れる。前回の宿題があれば、それができたかにも触れる。
-- 生徒の練習目標（優先順）に沿って、次にやることを絞る。
-- 日誌に書かれていないこと（波の高さ・本数・時間など）を推測で事実のように書かない。予報メモは実際の波とは限らない。
-- すでにできたことと、これからの目標を区別する。
-- 体の痛み・擦れの記録があれば、予防のひとことを添える。強い痛みが続くなら専門家に相談するよう勧める。
-- 写真が添付されている場合だけ、姿勢・目線・重心・足の位置について書く。写真から確かに言えないことは断定しない。
-- トーンは前向きに、でも具体的に。
+${pt('coachRules')}
 
-${out}
+${forChat ? pt('outChat') : pt('outJson')}
 
-生徒のプロフィール:
-${P('レベル', p.level)}${P('よく行く場所', p.spots)}${P('スタンス', p.stance)}${P('ボード', p.board)}${P('波の区別', p.waveAB)}${P('できるようになったこと', p.canDo)}${P('今の課題', p.issues)}${P('練習目標（優先順）', p.goals)}
-今日のセッション:
-${JSON.stringify(brief(x))}
+${pt('profile')}
+${['level', 'spots', 'stance', 'board', 'waveAB', 'canDo', 'issues', 'goals'].map(P).join('')}
+${pt('today')}
+${J(x)}
 
-前回のセッション（前回の宿題の確認用）:
-${prev ? JSON.stringify(brief(prev)) : 'なし'}
+${pt('prev')}
+${prev ? J(prev) : none}
 
-同じテーマ「${x.theme || '（テーマなし）'}」の過去の記録（新しい順）:
-${same.length ? same.map(r => JSON.stringify(brief(r))).join('\n') : 'なし'}
+${pt('same', { t: x.theme || pt('noTheme') })}
+${same.length ? same.map(J).join('\n') : none}
 
-最近のほかのセッション（参考）:
-${other.length ? other.map(r => JSON.stringify(brief(r))).join('\n') : 'なし'}`;
+${pt('other')}
+${other.length ? other.map(J).join('\n') : none}`;
 }
 
 /* Gemini（無料枠）に聞く */
@@ -442,7 +466,7 @@ async function listFlash(key, lite = false) {
 }
 async function pickModel(key) { // 使えるFlashモデルを自動で探す（モデル名は時々変わるため）
   const names = await listFlash(key);
-  if (!names[0]) throw new Error('使えるモデルが見つかりません');
+  if (!names[0]) throw new Error(t('noModel'));
   return names[0];
 }
 // 「混んでいる・回数オーバー」のエラーかどうか（503 high demand / 429 / 500）
@@ -472,7 +496,7 @@ async function askGemini(parts) {
     }
     // 全部だめなら、どのモデルを試したかを添えてエラーを出す（原因を調べやすくするため）
     e.busy = true;
-    e.message = `混んでいて使えませんでした（試したモデル：${tried.join('、')}）。少し時間をおくか「いつものAIに聞く」を使ってください`;
+    e.message = t('busyAll', { m: tried.join(', ') });
     throw e;
   }
 }
@@ -481,7 +505,7 @@ const parseJson = t => { const s = t.replace(/^```(?:json)?\s*|\s*```$/g, ''); t
 
 async function askCoach(id) {
   const x = items.find(r => r.id === id); if (!x || coachBusy[id]) return;
-  if (!store.get('namilog-gkey')) { coachErr[id] = 'AIコーチのキー（Gemini）が未設定です。⚙︎設定から入れるか、「いつものAIに聞く」を使ってください'; render(); return; }
+  if (!store.get('namilog-gkey')) { coachErr[id] = t('noKey'); render(); return; }
   coachBusy[id] = true; delete coachErr[id]; render();
   try {
     const parts = [{ text: buildPrompt(x, false) }];
@@ -499,9 +523,9 @@ async function askCoach(id) {
   } catch (e) {
     const m = e.message || '';
     coachErr[id] = e.busy ? m // 混雑で全モデルだめだったとき：試したモデル名入りのメッセージをそのまま出す
-      : e.status === 429 || /quota|exhausted/i.test(m) ? '無料枠の回数制限に当たりました。少し時間をおくか、「いつものAIに聞く」を使ってください'
-      : e.status === 400 && /key/i.test(m) || e.status === 403 ? 'APIキーが正しくないようです。⚙︎設定を確認してください'
-      : m === 'blocked' ? 'この内容にはアドバイスが返りませんでした' : 'うまく受け取れませんでした（' + m.slice(0, 80) + '）';
+      : e.status === 429 || /quota|exhausted/i.test(m) ? t('quota')
+      : e.status === 400 && /key/i.test(m) || e.status === 403 ? t('badKey')
+      : m === 'blocked' ? t('blocked') : t('recvFail', { e: m.slice(0, 80) });
   }
   delete coachBusy[id]; render();
 }
@@ -510,19 +534,19 @@ async function askCoach(id) {
 async function copyForChat(id) {
   const x = items.find(r => r.id === id); if (!x) return;
   const imgs = (x.media || []).filter(m => m.kind === 'image').length;
-  const text = buildPrompt(x, true) + (imgs ? `\n\n（写真が${imgs}枚あります。このあと貼り付けます）` : '');
-  try { await navigator.clipboard.writeText(text); toast('コピーしました。いつものAIに貼り付けてください'); }
-  catch (e) { toast('コピーできませんでした'); }
+  const text = buildPrompt(x, true) + (imgs ? '\n\n' + pt('photosNote', { n: imgs }) : '');
+  try { await navigator.clipboard.writeText(text); toast(t('copied')); }
+  catch (e) { toast(t('copyFail')); }
   pasteOpen = id; render();
 }
 async function savePasted(id) {
   const ta = document.getElementById('paste-' + id); const text = ta?.value.trim(); if (!text) return;
-  try { await saveRec({ ...items.find(r => r.id === id), advice: { source: 'paste', text, at: Date.now() } }); pasteOpen = null; openAdv.add(id); render(); toast('アドバイスを保存しました'); }
-  catch (e) { toast('保存できませんでした'); }
+  try { await saveRec({ ...items.find(r => r.id === id), advice: { source: 'paste', text, at: Date.now() } }); pasteOpen = null; openAdv.add(id); render(); toast(t('adviceSaved')); }
+  catch (e) { toast(t('saveFail', { e: e.message || 'error' })); }
 }
 async function setHomework(id, text) {
   const r = items.find(x => x.id === id); if (!r) return;
-  try { await saveRec({ ...r, next: r.next === text ? '' : text }); render(); toast(r.next === text ? '宿題を外しました' : '次回の宿題にしました'); } catch (e) { toast('保存できませんでした'); }
+  try { await saveRec({ ...r, next: r.next === text ? '' : text }); render(); toast(r.next === text ? t('hwOff') : t('hwSet')); } catch (e) { toast(t('saveFail', { e: e.message || 'error' })); }
 }
 function coachHtml(x) {
   const a = x.advice, busy = coachBusy[x.id], err = coachErr[x.id];
@@ -531,20 +555,20 @@ function coachHtml(x) {
     const d = new Date(a.at);
     const pasted = a.source === 'paste' || a.source === 'claude'; // 'claude' は前の版で保存したもの
     const body = pasted ? `<p class="free">${esc(a.text)}</p>` : `
-      ${a.happened ? `<h4>何が起きたか</h4><p>${esc(a.happened)}</p>` : ''}
-      ${a.causes?.length ? `<h4>考えられる原因</h4><ul>${a.causes.map(c => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
-      ${a.actions?.length ? `<h4>次に試すこと</h4><ol>${a.actions.map(p => `<li><b>${esc(p.title)}</b>${esc(p.detail)}</li>`).join('')}</ol>` : ''}
-      ${a.photo ? `<h4>写真から</h4><p>${esc(a.photo)}</p>` : ''}
+      ${a.happened ? `<h4>${t('happened')}</h4><p>${esc(a.happened)}</p>` : ''}
+      ${a.causes?.length ? `<h4>${t('causes')}</h4><ul>${a.causes.map(c => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
+      ${a.actions?.length ? `<h4>${t('actions')}</h4><ol>${a.actions.map(p => `<li><b>${esc(p.title)}</b>${esc(p.detail)}</li>`).join('')}</ol>` : ''}
+      ${a.photo ? `<h4>${t('fromPhoto')}</h4><p>${esc(a.photo)}</p>` : ''}
       ${a.safety ? `<p class="body">${esc(a.safety)}</p>` : ''}
-      ${a.homework?.length ? `<h4>タップで次回の宿題にする</h4><div class="hwc">${a.homework.map(t => `<button type="button" class="${x.next === t ? 'on' : ''}" data-hw="${esc(x.id)}" data-v="${esc(t)}">${x.next === t ? '✓ ' : ''}${esc(t)}</button>`).join('')}</div>` : ''}`;
-    h += `<details class="coach" data-adv="${esc(x.id)}" ${openAdv.has(x.id) ? 'open' : ''}><summary>コーチのアドバイス</summary><div class="cb">${body}
-      <small class="note">${d.getMonth() + 1}/${d.getDate()} · ${pasted ? 'いつものAI' : 'AIコーチ'}${a.photos ? ` · 写真${a.photos}枚を参考` : ''} · 記録からの一般的なアドバイスです</small></div></details>`;
+      ${a.homework?.length ? `<h4>${t('tapHw')}</h4><div class="hwc">${a.homework.map(v => `<button type="button" class="${x.next === v ? 'on' : ''}" data-hw="${esc(x.id)}" data-v="${esc(v)}">${x.next === v ? '✓ ' : ''}${esc(v)}</button>`).join('')}</div>` : ''}`;
+    h += `<details class="coach" data-adv="${esc(x.id)}" ${openAdv.has(x.id) ? 'open' : ''}><summary>${t('coachAdvice')}</summary><div class="cb">${body}
+      <small class="note">${d.getMonth() + 1}/${d.getDate()} · ${pasted ? t('viaChat') : t('viaCoach')}${a.photos ? ' · ' + t('photosUsed', { n: a.photos }) : ''} · ${t('generalAdvice')}</small></div></details>`;
   }
-  if (busy) h += `<p class="thinking"><i></i>コーチが考え中…（10〜30秒）</p>`;
-  else h += `<div class="asks"><button type="button" class="ask" data-coach="${esc(x.id)}">${a ? 'もう一度聞く' : 'AIコーチに聞く'}</button><button type="button" class="ask" data-chat="${esc(x.id)}">いつものAIに聞く</button></div>`;
+  if (busy) h += `<p class="thinking"><i></i>${t('thinking')}</p>`;
+  else h += `<div class="asks"><button type="button" class="ask" data-coach="${esc(x.id)}">${a ? t('askAgain') : t('askCoach')}</button><button type="button" class="ask" data-chat="${esc(x.id)}">${t('askChat')}</button></div>`;
   if (err) h += `<p class="err">${esc(err)}</p>`;
-  if (pasteOpen === x.id) h += `<div class="paste"><p>① 指示書をコピーしました → ChatGPT・Claude・Geminiなど、いつも使っているAIに貼り付け（写真は手で添付）<br>② 返ってきた答えを下に貼って保存</p>
-    <textarea id="paste-${esc(x.id)}" placeholder="AIの答えをここに貼り付け"></textarea><button type="button" class="btn pri" data-savepaste="${esc(x.id)}">アドバイスとして保存</button></div>`;
+  if (pasteOpen === x.id) h += `<div class="paste"><p>${t('pasteHelp')}</p>
+    <textarea id="paste-${esc(x.id)}" placeholder="${esc(t('pastePh'))}"></textarea><button type="button" class="btn pri" data-savepaste="${esc(x.id)}">${t('saveAdvice')}</button></div>`;
   return h;
 }
 
@@ -553,55 +577,52 @@ const PF = ['level', 'spots', 'stance', 'board', 'waveAB', 'canDo', 'issues', 'g
 function openSettings() {
   $('gKey').value = store.get('namilog-gkey'); $('gModel').value = store.get('namilog-gmodel') || DEFAULT_MODEL; $('gMsg').textContent = '';
   const f = $('profileForm'); for (const k of PF) f[k].value = profile[k] || '';
-  $('whoami').textContent = user ? `ログイン中：${user.email}` : '';
+  $('whoami').textContent = user ? t('loggedInAs', { e: user.email }) : '';
   $('settings').hidden = false; document.body.style.overflow = 'hidden';
 }
 $('openSettings').addEventListener('click', openSettings);
 $('closeSettings').addEventListener('click', () => { $('settings').hidden = true; document.body.style.overflow = ''; });
 $('gSave').addEventListener('click', async () => {
   store.set('namilog-gkey', $('gKey').value.trim()); store.set('namilog-gmodel', $('gModel').value.trim() || DEFAULT_MODEL);
-  if (!$('gKey').value.trim()) { $('gMsg').textContent = 'キーを消しました'; return; }
-  $('gMsg').textContent = 'テスト中…';
-  try { const t = await askGemini([{ text: '{"ok":true} というJSONだけを返してください' }]); $('gMsg').textContent = '✓ つながりました（モデル：' + store.get('namilog-gmodel') + '）'; $('gModel').value = store.get('namilog-gmodel'); }
-  catch (e) { $('gMsg').textContent = '✗ つながりませんでした：' + (e.message || '').slice(0, 120); }
+  if (!$('gKey').value.trim()) { $('gMsg').textContent = t('keyCleared'); return; }
+  $('gMsg').textContent = t('testing');
+  try { await askGemini([{ text: 'Return only this JSON: {"ok":true}' }]); $('gMsg').textContent = t('connected', { m: store.get('namilog-gmodel') }); $('gModel').value = store.get('namilog-gmodel'); }
+  catch (e) { $('gMsg').textContent = t('notConnected', { e: (e.message || '').slice(0, 120) }); }
 });
 $('profileForm').addEventListener('submit', async e => {
   e.preventDefault(); const f = e.target, p = { ...profile };
   for (const k of PF) p[k] = f[k].value.trim();
-  try { await saveProfile(p); toast('プロフィールを保存しました'); } catch (err) { toast('保存できませんでした'); }
+  try { await saveProfile(p); toast(t('pfSaved')); } catch (err) { toast(t('saveFail', { e: err.message || 'error' })); }
 });
 /* これまでの記録を取り込む ― アプリを使う前のメモを貼る → AIが記録の形に分ける → 確認して保存
    AIは「AIコーチ（Gemini）」でも「いつものAI（コピペ）」でもOK。書いていないことは空欄のまま */
-const PF_LABEL = { level: 'レベル', spots: 'よく行く場所', stance: 'スタンス', board: 'ボード', waveAB: '波A・Bの区別', canDo: 'できるようになったこと',
-  issues: '今の課題', goals: '練習目標（優先順）', gear: '用具・購入検討', why: 'サーフィンへの思い' };
 let impData = null, impDup = []; // AIが変換した結果（保存前の確認用）と「同じ日・同じ場所の記録がもうあるか」
 function importPrompt(memo) {
-  const ch = k => OPT[k].join(' / '); // 選択肢を「A / B / C」の形で並べる
-  return `あなたはサーフィン記録アプリ「波ログ」のデータ整理係です。下の【メモ】は、ユーザーがアプリを使う前に書いたサーフィンの記録です。
-1回の海＝1件の記録に分けて、下の【形式】のJSONだけを返してください（説明文やコードブロックは不要）。
+  const ch = k => OPT[k].map(optL).join(' / ');                 // 選択肢を「A / B / C」の形で並べる（選んだ言語で）
+  const d = k => TX._impf?.[k] ?? EN._impf?.[k] ?? '';         // 各項目の説明
+  return `${pt('impIntro')}
 
-【ルール】
-- メモに書いていないことは推測で埋めない。分からない項目は出力しない（波の高さ・本数・時間などを作らない）
-- 予報の内容は forecast に入れ、実際の波の項目（size など）には入れない
-- 日付は YYYY-MM-DD。年が書いていなければ、今日（${today()}）以前でいちばん近い年にする。日付があいまいなら dateNote にそのことを書く（例：「10/1頃。正確な日付は不明」）
-- 選択肢がある項目は、選択肢の言葉そのままで入れる。当てはまらなければ出力しない
-- メモの言い回しはできるだけ残す。1回の海に結びつかない内容（レベル・課題・目標・用具・思いなど）は profile に入れる
+${pt('impRules', { today: today() })}
 
-【形式】（値の説明。分からない項目は省く）
+${pt('impFormat')}
 {"sessions":[{
- "date":"YYYY-MM-DD", "dateNote":"日付の補足", "start":"入水 HH:MM", "end":"終了 HH:MM", "timeOfDay":"${ch('timeOfDay')}",
- "spot":"ポイント名", "board":"ボード", "stance":"${ch('stance')}", "weather":"${ch('weather')}", "size":"${ch('size')}",
- "swellDir":"${ch('swellDir')}", "period":"周期（秒）", "wind":"${ch('wind')}", "windStr":"${ch('windStr')}", "tide":"${ch('tide')}", "forecast":"予報メモ",
- "theme":"その日のテーマ・練習したこと", "ach":"テーマの達成度 1〜5の数字", "takeoffs":"テイクオフに挑戦した回数（数字）", "caught":"波をキャッチした回数（数字）", "rides":"立って滑れた回数（数字）",
- "waveType":"${ch('waveType')}（A＝崩れる前の滑らかな波、B＝崩れた白波）", "paddle":"パドルの調子 1〜5（1=きつい 5=絶好調）", "longest":"いちばん長く乗れた波の様子",
- "falls":["失敗の原因。次から選ぶ（複数可）：${ch('falls')}"], "newSkill":"できるようになったこと", "growth":"成長を感じたこと", "next":"次回の宿題・次にやりたいこと",
- "memo":"その他の気づき", "body":"体の痛み・擦れ", "english":"英語メモ", "rate":"満足度 1〜5"
+ "date":"${d('date')}", "dateNote":"${d('dateNote')}", "start":"${d('start')}", "end":"${d('end')}", "timeOfDay":"${ch('timeOfDay')}",
+ "spot":"${d('spot')}", "board":"${d('board')}", "stance":"${ch('stance')}", "weather":"${ch('weather')}", "size":"${ch('size')}",
+ "swellDir":"${ch('swellDir')}", "period":"${d('period')}", "wind":"${ch('wind')}", "windStr":"${ch('windStr')}", "tide":"${ch('tide')}", "forecast":"${d('forecast')}",
+ "theme":"${d('theme')}", "ach":"${d('ach')}", "takeoffs":"${d('takeoffs')}", "caught":"${d('caught')}", "rides":"${d('rides')}",
+ "waveType":"${ch('waveType')} ${d('waveTypeNote')}", "paddle":"${d('paddle')}", "longest":"${d('longest')}",
+ "falls":["${d('falls')}: ${ch('falls')}"], "newSkill":"${d('newSkill')}", "growth":"${d('growth')}", "next":"${d('next')}",
+ "memo":"${d('memo')}", "body":"${d('body')}", "english":"${d('english')}", "rate":"${d('rate')}"
 }],
-"profile":{${PF.map(k => `"${k}":"${PF_LABEL[k]}"`).join(', ')}}}
+"profile":{${PF.map(k => `"${k}":"${t('pf_' + k)}"`).join(', ')}}}
 
-【メモ】
+${pt('impNotes')}
 ${memo}`;
 }
+// 英語などの表示名（Waist など）で返ってきた選択肢を、保存用の日本語（腰）に戻す
+const OPT_BACK = {};
+for (const L of Object.values(I18N)) for (const [ja, label] of Object.entries(L._opt || {})) OPT_BACK[label.toLowerCase()] = ja;
+const optBack = v => { const s = v == null ? '' : String(v).trim(); return OPT_BACK[s.toLowerCase()] ?? s; };
 // AIの答えを、アプリで使える形に整える（知らない項目や、選択肢にない言葉は捨てる）
 function cleanImport(o) {
   const out = { sessions: [], profile: {} };
@@ -614,8 +635,8 @@ function cleanImport(o) {
     if (r.start && r.end) r.mins = minutesBetween(r.start, r.end);
     for (const k of ['takeoffs', 'caught', 'rides']) if (txt(s[k]) && Number.isFinite(+s[k])) r[k] = Math.max(0, Math.round(+s[k]));
     for (const k of ['ach', 'paddle', 'rate']) { const n = Math.round(+s[k]); if (n >= 1 && n <= 5) r[k] = n; }
-    for (const k of ['timeOfDay', 'stance', 'weather', 'size', 'swellDir', 'wind', 'windStr', 'tide', 'waveType']) if (OPT[k].includes(txt(s[k]))) r[k] = txt(s[k]);
-    const falls = (Array.isArray(s.falls) ? s.falls : []).filter(v => OPT.falls.includes(v)); if (falls.length) r.falls = falls;
+    for (const k of ['timeOfDay', 'stance', 'weather', 'size', 'swellDir', 'wind', 'windStr', 'tide', 'waveType']) { const v = optBack(s[k]); if (OPT[k].includes(v)) r[k] = v; }
+    const falls = (Array.isArray(s.falls) ? s.falls : []).map(optBack).filter(v => OPT.falls.includes(v)); if (falls.length) r.falls = falls;
     if (Object.keys(r).length > 1 || r.date) out.sessions.push(r);
   }
   for (const k of PF) if (txt(o?.profile?.[k])) out.profile[k] = txt(o.profile[k]);
@@ -625,69 +646,69 @@ function setImport(o) { // 変換結果を受け取って、確認画面を出�
   impData = cleanImport(o);
   impDup = impData.sessions.map(s => items.some(x => x.date === s.date && x.spot === s.spot));
   const n = impData.sessions.length, pf = Object.keys(impData.profile).length;
-  $('impMsg').textContent = n || pf ? `${n}回分${pf ? '＋プロフィール' : ''}が見つかりました。下で確認してください` : '記録が見つかりませんでした。メモの内容を確認してください';
+  $('impMsg').textContent = n || pf ? t('impFound', { n, p: pf ? t('impPlusPf') : '' }) : t('impNone');
   drawImport();
 }
 function drawImport() {
   const box = $('impPreview'); if (!impData) { box.innerHTML = ''; return; }
   const { sessions, profile: pf } = impData, pfKeys = PF.filter(k => pf[k]);
-  const sum = s => Object.entries(brief(s)).filter(([k]) => k !== '日付' && k !== 'ポイント').map(([k, v]) => `${k}：${v}`).join('／');
+  const sum = s => Object.entries(brief(s)).filter(([k]) => k !== fld('date') && k !== fld('spot')).map(([k, v]) => `${k}: ${v}`).join(' / ');
   const row = (s, i) => `<div class="paste">
-      <label style="display:flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" data-impon="${i}" ${impDup[i] ? '' : 'checked'}> ${i + 1}件目${impDup[i] ? '<span class="tag">同じ日・場所の記録あり</span>' : ''}</label>
-      <label class="f">日付<input type="date" data-impdate="${i}" value="${esc(s.date)}"></label>
-      <label class="f">ポイント<input type="text" data-impspot="${i}" value="${esc(s.spot || '')}"></label>
+      <label style="display:flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" data-impon="${i}" ${impDup[i] ? '' : 'checked'}> ${t('impNth', { n: i + 1 })}${impDup[i] ? `<span class="tag">${t('impDup')}</span>` : ''}</label>
+      <label class="f">${t('date')}<input type="date" data-impdate="${i}" value="${esc(s.date)}"></label>
+      <label class="f">${t('spot')}<input type="text" data-impspot="${i}" value="${esc(s.spot || '')}"></label>
       ${s.dateNote ? `<p class="note">※ ${esc(s.dateNote)}</p>` : ''}
-      <p class="hint">${esc(sum(s).slice(0, 300)) || '（ほかの項目なし）'}</p></div>`;
+      <p class="hint">${esc(sum(s).slice(0, 300)) || t('impOther')}</p></div>`;
   box.innerHTML = (sessions.length || pfKeys.length) ? `<div class="gbody">
-    <p class="hint">取り込むものにチェック。日付とポイントはここで直せます。ほかの項目は、取り込んだあと各記録の「編集」から直せます。</p>
+    <p class="hint">${t('impCheck')}</p>
     ${sessions.map(row).join('')}
-    ${pfKeys.length ? `<div class="paste"><label style="display:flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" id="impPf" checked> プロフィール（いま空欄の項目だけ埋めます）</label>
-      <p class="hint">${pfKeys.map(k => PF_LABEL[k]).join('、')}</p></div>` : ''}
-    <button class="btn pri" type="button" id="impSave">チェックしたものを保存</button></div>` : '';
+    ${pfKeys.length ? `<div class="paste"><label style="display:flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" id="impPf" checked> ${t('impPf')}</label>
+      <p class="hint">${pfKeys.map(k => esc(t('pf_' + k))).join(t('listSep'))}</p></div>` : ''}
+    <button class="btn pri" type="button" id="impSave">${t('impSave')}</button></div>` : '';
 }
 async function saveImport() {
   const box = $('impPreview'), q = s => box.querySelector(s);
   const rows = impData.sessions.map((s, i) => ({ ...s, date: q(`[data-impdate="${i}"]`).value, spot: q(`[data-impspot="${i}"]`).value.trim() }))
     .filter((_, i) => q(`[data-impon="${i}"]`).checked);
   const usePf = q('#impPf')?.checked;
-  if (!rows.length && !usePf) { toast('チェックされたものがありません'); return; }
-  if (rows.some(r => !r.date || !r.spot)) { toast('日付とポイントが空の記録があります'); return; }
+  if (!rows.length && !usePf) { toast(t('impNothing')); return; }
+  if (rows.some(r => !r.date || !r.spot)) { toast(t('impMissing')); return; }
   q('#impSave').disabled = true;
   try {
     for (const r of rows) await saveRec({ ...r, updated: Date.now() });
     if (usePf) { const p = { ...profile }; for (const k of PF) if (!p[k] && impData.profile[k]) p[k] = impData.profile[k]; await saveProfile(p); }
     impData = null; $('impText').value = ''; $('impAnswer').value = ''; $('impPaste').hidden = true; $('impMsg').textContent = '';
     drawImport(); render(); openSettings();
-    toast(`${rows.length}回分${usePf ? '＋プロフィール' : ''}を取り込みました`);
-  } catch (e) { toast('保存できませんでした（' + (e.message || '') + '）'); q('#impSave').disabled = false; }
+    toast(t('impDone', { n: rows.length, p: usePf ? t('impPlusPf') : '' }));
+  } catch (e) { toast(t('saveFail', { e: e.message || 'error' })); q('#impSave').disabled = false; }
 }
-const impMemo = () => { const t = $('impText').value.trim(); if (!t) $('impMsg').textContent = 'メモを貼り付けてください'; return t; };
+const impMemo = () => { const s = $('impText').value.trim(); if (!s) $('impMsg').textContent = t('impNeedMemo'); return s; };
 $('impAi').addEventListener('click', async () => { // AIコーチ（Gemini）で自動変換
   const memo = impMemo(); if (!memo) return;
-  if (!store.get('namilog-gkey')) { $('impMsg').textContent = 'AIコーチのキー（Gemini）が未設定です。上で設定するか「いつものAIで変換」を使ってください'; return; }
-  const b = $('impAi'); b.disabled = true; $('impMsg').textContent = '変換中…（10〜30秒）';
-  try { const o = parseJson(await askGemini([{ text: importPrompt(memo) }])); if (!o) throw new Error('答えを読み取れませんでした'); setImport(o); }
-  catch (e) { $('impMsg').textContent = '変換できませんでした：' + (e.message || '').slice(0, 120); }
+  if (!store.get('namilog-gkey')) { $('impMsg').textContent = t('impNoKey'); return; }
+  const b = $('impAi'); b.disabled = true; $('impMsg').textContent = t('impWorking');
+  try { const o = parseJson(await askGemini([{ text: importPrompt(memo) }])); if (!o) throw new Error(t('impUnread')); setImport(o); }
+  catch (e) { $('impMsg').textContent = t('impFail', { e: (e.message || '').slice(0, 120) }); }
   b.disabled = false;
 });
 $('impCopy').addEventListener('click', async () => { // いつものAI（コピペ）で変換
   const memo = impMemo(); if (!memo) return;
-  try { await navigator.clipboard.writeText(importPrompt(memo)); toast('コピーしました。いつものAIに貼り付けてください'); } catch (e) { toast('コピーできませんでした'); }
+  try { await navigator.clipboard.writeText(importPrompt(memo)); toast(t('copied')); } catch (e) { toast(t('copyFail')); }
   $('impPaste').hidden = false; $('impMsg').textContent = '';
 });
 $('impLoad').addEventListener('click', () => {
   let o = null; try { o = parseJson($('impAnswer').value.trim()); } catch (e) {}
-  if (!o) { $('impMsg').textContent = '読み取れませんでした。AIの答えを最初から最後まで全部コピーして貼ってください'; return; }
+  if (!o) { $('impMsg').textContent = t('impBadPaste'); return; }
   setImport(o);
 });
 $('impPreview').addEventListener('click', e => { if (e.target.id === 'impSave') saveImport(); });
 $('copyCsv').addEventListener('click', async () => {
-  const cols = [['日付', 'date'], ['入水', 'start'], ['終了', 'end'], ['時間帯', 'timeOfDay'], ['ポイント', 'spot'], ['ボード', 'board'], ['スタンス', 'stance'], ['天気', 'weather'], ['サイズ', 'size'], ['うねり', 'swellDir'], ['周期', 'period'], ['風', 'wind'], ['風の強さ', 'windStr'], ['潮', 'tide'], ['予報', 'forecast'],
-    ['テーマ', 'theme'], ['達成度', 'ach'], ['挑戦', 'takeoffs'], ['キャッチ', 'caught'], ['立てた', 'rides'], ['波の種類', 'waveType'], ['パドル', 'paddle'], ['いちばん長い波', 'longest'], ['失敗の原因', 'falls'],
-    ['できた', 'newSkill'], ['成長', 'growth'], ['次回の宿題', 'next'], ['気づき', 'memo'], ['体', 'body'], ['英語', 'english'], ['満足度', 'rate']];
-  const c = v => '"' + String(Array.isArray(v) ? v.join('、') : v ?? '').replace(/"/g, '""') + '"';
-  const csv = [cols.map(x => x[0]).join(','), ...sorted().map(r => cols.map(([, k]) => c(r[k])).join(','))].join('\n');
-  try { await navigator.clipboard.writeText(csv); toast('CSVをコピーしました'); } catch (e) { toast('コピーできませんでした'); }
+  // 見出しは選んだ言語。選択肢も表示名にする（数字の項目はそのまま）
+  const cols = ['date', 'start', 'end', 'timeOfDay', 'spot', 'board', 'stance', 'weather', 'size', 'swellDir', 'period', 'wind', 'windStr', 'tide', 'forecast',
+    'theme', 'ach', 'takeoffs', 'caught', 'rides', 'waveType', 'paddle', 'longest', 'falls', 'newSkill', 'growth', 'next', 'memo', 'body', 'english', 'rate'];
+  const c = v => '"' + String(Array.isArray(v) ? v.map(optL).join(t('listSep')) : optL(v ?? '')).replace(/"/g, '""') + '"';
+  const csv = [cols.map(fld).join(','), ...sorted().map(r => cols.map(k => c(r[k])).join(','))].join('\n');
+  try { await navigator.clipboard.writeText(csv); toast(t('csvCopied')); } catch (e) { toast(t('copyFail')); }
 });
 $('logout').addEventListener('click', async () => { await sb.auth.signOut(); location.reload(); });
 
@@ -700,17 +721,17 @@ async function start() {
   if (!data.session) { $('loginView').hidden = false; return; }
   user = data.session.user;
   $('appView').hidden = false; render();
-  try { await loadAll(); setStatus('クラウドに保存中・iPhoneでもPCでも同じ記録'); }
-  catch (e) { setStatus('記録を読み込めませんでした（' + (e.message || e.code || '') + '）', true); }
+  try { await loadAll(); setStatus(t('synced')); }
+  catch (e) { setStatus(t('loadFail', { e: e.message || e.code || '' }), true); }
   render();
 }
 async function auth(signup) {
   const f = $('loginForm'), email = f.email.value.trim(), password = f.password.value;
-  if (!email || password.length < 6) { $('loginMsg').textContent = 'メールと6文字以上のパスワードを入れてください'; return; }
-  $('loginMsg').textContent = signup ? 'アカウントを作成中…' : 'ログイン中…';
+  if (!email || password.length < 6) { $('loginMsg').textContent = t('needEmailPw'); return; }
+  $('loginMsg').textContent = signup ? t('signingUp') : t('loggingIn');
   const { data, error } = signup ? await sb.auth.signUp({ email, password }) : await sb.auth.signInWithPassword({ email, password });
-  if (error) { $('loginMsg').textContent = '✗ ' + (error.message.includes('Invalid login') ? 'メールかパスワードが違います' : error.message); return; }
-  if (signup && !data.session) { $('loginMsg').textContent = '確認メールを送りました。メールのリンクを開いてから、ここでログインしてください'; return; }
+  if (error) { $('loginMsg').textContent = '✗ ' + (error.message.includes('Invalid login') ? t('wrongPw') : error.message); return; }
+  if (signup && !data.session) { $('loginMsg').textContent = t('checkMail'); return; }
   location.reload();
 }
 $('loginForm').addEventListener('submit', e => { e.preventDefault(); auth(false); });

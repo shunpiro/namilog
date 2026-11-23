@@ -173,6 +173,10 @@ legend{font-size:14px;color:var(--mute);font-weight:600;margin-bottom:6px;paddin
 .login img{width:84px;height:84px;border-radius:20px;justify-self:center;box-shadow:0 6px 20px rgba(0,0,0,.2)}
 .login h1{margin:0;text-align:center;font-size:30px}
 .login p{margin:0;font-size:14px;color:var(--mute);text-align:center}
+/* 言語の切り替えボタン */
+.langsw{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+.langsw button{min-height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--chip);font-weight:700;font-size:14px}
+.langsw button.on{background:var(--teal);border-color:var(--teal);color:#fff}
 .sheet{position:fixed;inset:0;background:var(--bg);z-index:40;overflow-y:auto;padding-bottom:calc(30px + var(--safe-b))}
 .sheet .top{padding-bottom:16px}
 .sheet section{margin-top:16px}
@@ -194,13 +198,14 @@ legend{font-size:14px;color:var(--mute);font-weight:600;margin-bottom:6px;paddin
 <!-- ログイン画面 -->
 <div class="login" id="loginView" hidden>
   <form class="card" id="loginForm">
+    <div class="langsw"></div><!-- 言語の切り替え（中身は app.js が作る） -->
     <img src="icons/icon-180.png" alt="">
-    <h1>波ログ</h1>
-    <p id="loginMsg">メールアドレスとパスワードでログイン</p>
-    <label class="f">メールアドレス<input type="email" name="email" autocomplete="email" required></label>
-    <label class="f">パスワード（6文字以上）<input type="password" name="password" autocomplete="current-password" minlength="6" required></label>
-    <button class="big" type="submit" id="loginBtn">ログイン</button>
-    <button class="btn" type="button" id="signupBtn">はじめて使う（アカウントを作る）</button>
+    <h1 data-i18n="app">波ログ</h1>
+    <p id="loginMsg" data-i18n="loginMsg">メールアドレスとパスワードでログイン</p>
+    <label class="f"><span data-i18n="email">メールアドレス</span><input type="email" name="email" autocomplete="email" required></label>
+    <label class="f"><span data-i18n="password">パスワード（6文字以上）</span><input type="password" name="password" autocomplete="current-password" minlength="6" required></label>
+    <button class="big" type="submit" id="loginBtn" data-i18n="login">ログイン</button>
+    <button class="btn" type="button" id="signupBtn" data-i18n="signup">はじめて使う（アカウントを作る）</button>
   </form>
 </div>
 
@@ -208,8 +213,8 @@ legend{font-size:14px;color:var(--mute);font-weight:600;margin-bottom:6px;paddin
 <div class="login" id="setupView" hidden>
   <div class="card">
     <img src="icons/icon-180.png" alt="">
-    <h1>あと少し！</h1>
-    <p>config.js に Supabase の URL と anon key を入れてください。手順は README.md の「ステップ2」にあります。</p>
+    <h1 data-i18n="setupTitle">あと少し！</h1>
+    <p data-i18n="setupText">config.js に Supabase の URL と anon key を入れてください。手順は README.md の「ステップ2」にあります。</p>
   </div>
 </div>
 
@@ -217,7 +222,7 @@ legend{font-size:14px;color:var(--mute);font-weight:600;margin-bottom:6px;paddin
 <div id="appView" hidden>
 <header class="band top">
   <div class="wrap">
-    <div class="bar"><h1><img src="icons/icon-180.png" alt="">波ログ</h1><button class="gear" id="openSettings" type="button" aria-label="設定">⚙︎</button></div>
+    <div class="bar"><h1><img src="icons/icon-180.png" alt=""><span data-i18n="app">波ログ</span></h1><button class="gear" id="openSettings" type="button" aria-label="設定" data-i18n-aria="settings">⚙︎</button></div>
     <div class="stats" id="stats"></div>
   </div>
   <div class="fig" id="fig"><svg id="wave" aria-hidden="true"></svg><span class="figcap" id="figcap"></span></div>
@@ -225,75 +230,75 @@ legend{font-size:14px;color:var(--mute);font-weight:600;margin-bottom:6px;paddin
 
 <main class="band">
   <div class="wrap" style="display:grid;gap:18px">
-    <section class="card" aria-label="記録する">
-      <p class="status" id="status"><i></i><span>読み込み中…</span></p>
+    <section class="card" aria-label="記録する" data-i18n-aria="recordArea">
+      <p class="status" id="status"><i></i><span data-i18n="loading">読み込み中…</span></p>
       <div id="homework"></div>
-      <button class="big" id="openForm" type="button">＋ 今日のセッションを記録</button>
+      <button class="big" id="openForm" type="button" data-i18n="openForm">＋ 今日のセッションを記録</button>
 
       <form id="form" autocomplete="off" hidden>
-        <details class="grp" open><summary>いつ・どこで</summary><div class="gbody">
+        <details class="grp" open><summary data-i18n="gWhen">いつ・どこで</summary><div class="gbody">
           <div class="row">
-            <label class="f">日付<input type="date" name="date" required></label>
-            <label class="f">入水<input type="time" name="start"></label>
-            <label class="f">終了<input type="time" name="end"></label>
+            <label class="f"><span data-i18n="date">日付</span><input type="date" name="date" required></label>
+            <label class="f"><span data-i18n="start">入水</span><input type="time" name="start"></label>
+            <label class="f"><span data-i18n="end">終了</span><input type="time" name="end"></label>
           </div>
-          <fieldset><legend>時間帯（時刻がわからないとき）</legend><div class="chips" data-chips="timeOfDay"></div></fieldset>
+          <fieldset><legend data-i18n="timeOfDay">時間帯（時刻がわからないとき）</legend><div class="chips" data-chips="timeOfDay"></div></fieldset>
           <div class="row2">
-            <label class="f">ポイント<input type="text" name="spot" list="spotList" placeholder="例：Canoes" required></label>
-            <label class="f">ボード<input type="text" name="board" list="boardList" placeholder="例：10'0 ソフト"></label>
+            <label class="f"><span data-i18n="spot">ポイント</span><input type="text" name="spot" list="spotList" placeholder="例：Canoes" data-i18n-ph="spotPh" required></label>
+            <label class="f"><span data-i18n="board">ボード</span><input type="text" name="board" list="boardList" placeholder="例：10'0 ソフト" data-i18n-ph="boardPh"></label>
           </div>
-          <fieldset><legend>スタンス</legend><div class="chips" data-chips="stance"></div></fieldset>
+          <fieldset><legend data-i18n="stance">スタンス</legend><div class="chips" data-chips="stance"></div></fieldset>
         </div></details>
 
-        <details class="grp" open><summary>コンディション</summary><div class="gbody">
-          <fieldset><legend>天気</legend><div class="chips" data-chips="weather"></div></fieldset>
-          <fieldset><legend>波のサイズ（体感）</legend><div class="chips" data-chips="size"></div></fieldset>
-          <fieldset><legend>うねりの向き（どこから来たか）</legend><div class="chips" data-chips="swellDir"></div></fieldset>
+        <details class="grp" open><summary data-i18n="gCond">コンディション</summary><div class="gbody">
+          <fieldset><legend data-i18n="weather">天気</legend><div class="chips" data-chips="weather"></div></fieldset>
+          <fieldset><legend data-i18n="size">波のサイズ（体感）</legend><div class="chips" data-chips="size"></div></fieldset>
+          <fieldset><legend data-i18n="swellDir">うねりの向き（どこから来たか）</legend><div class="chips" data-chips="swellDir"></div></fieldset>
           <div class="row">
-            <label class="f">周期（秒）<input type="number" name="period" min="0" max="30" inputmode="numeric" placeholder="例：12"></label>
+            <label class="f"><span data-i18n="period">周期（秒）</span><input type="number" name="period" min="0" max="30" inputmode="numeric" placeholder="例：12" data-i18n-ph="periodPh"></label>
           </div>
-          <fieldset><legend>風（岸に対して）</legend><div class="chips" data-chips="wind"></div></fieldset>
-          <fieldset><legend>風の強さ</legend><div class="chips" data-chips="windStr"></div></fieldset>
-          <fieldset><legend>潮</legend><div class="chips" data-chips="tide"></div></fieldset>
-          <label class="f">予報メモ（実際の波とは別に）<input type="text" name="forecast" placeholder="例：南岸 2〜3ft、東の風"></label>
+          <fieldset><legend data-i18n="wind">風（岸に対して）</legend><div class="chips" data-chips="wind"></div></fieldset>
+          <fieldset><legend data-i18n="windStr">風の強さ</legend><div class="chips" data-chips="windStr"></div></fieldset>
+          <fieldset><legend data-i18n="tide">潮</legend><div class="chips" data-chips="tide"></div></fieldset>
+          <label class="f"><span data-i18n="forecast">予報メモ（実際の波とは別に）</span><input type="text" name="forecast" placeholder="例：南岸 2〜3ft、東の風" data-i18n-ph="forecastPh"></label>
         </div></details>
 
-        <details class="grp" open><summary>今日のテーマ</summary><div class="gbody">
-          <label class="f">練習テーマ<input type="text" name="theme" list="themeList" placeholder="例：座ったまま180度ターン"></label>
+        <details class="grp" open><summary data-i18n="gTheme">今日のテーマ</summary><div class="gbody">
+          <label class="f"><span data-i18n="theme">練習テーマ</span><input type="text" name="theme" list="themeList" placeholder="例：座ったまま180度ターン" data-i18n-ph="themePh"></label>
           <div class="presets" id="themePresets"></div>
-          <fieldset><legend>テーマの達成度</legend><div class="chips lv" data-chips="ach"></div></fieldset>
+          <fieldset><legend data-i18n="ach">テーマの達成度</legend><div class="chips lv" data-chips="ach"></div></fieldset>
         </div></details>
 
-        <details class="grp" open><summary>乗った波</summary><div class="gbody">
+        <details class="grp" open><summary data-i18n="gWaves">乗った波</summary><div class="gbody">
           <div class="row">
-            <div class="f">テイクオフに挑戦<div class="stepper" data-step-for="takeoffs"></div></div>
-            <div class="f">波をキャッチ<div class="stepper" data-step-for="caught"></div></div>
-            <div class="f w2">立って滑れた<div class="stepper" data-step-for="rides"></div></div>
+            <div class="f"><span data-i18n="takeoffs">テイクオフに挑戦</span><div class="stepper" data-step-for="takeoffs"></div></div>
+            <div class="f"><span data-i18n="caught">波をキャッチ</span><div class="stepper" data-step-for="caught"></div></div>
+            <div class="f w2"><span data-i18n="ridesF">立って滑れた</span><div class="stepper" data-step-for="rides"></div></div>
           </div>
-          <fieldset><legend>乗った波の種類（A＝崩れる前／B＝白波）</legend><div class="chips" data-chips="waveType"></div></fieldset>
-          <fieldset><legend>パドリングの感覚</legend><div class="chips" data-chips="paddle"></div></fieldset>
-          <label class="f">いちばん長く乗れた波<textarea name="longest" placeholder="例：早めにパドルを始めたら、波が大きくなるところで滑り出せた"></textarea></label>
-          <fieldset><legend>落ちた・失敗した原因（いくつでも）</legend><div class="chips" data-multi="falls"></div></fieldset>
+          <fieldset><legend data-i18n="waveType">乗った波の種類（A＝崩れる前／B＝白波）</legend><div class="chips" data-chips="waveType"></div></fieldset>
+          <fieldset><legend data-i18n="paddle">パドリングの感覚</legend><div class="chips" data-chips="paddle"></div></fieldset>
+          <label class="f"><span data-i18n="longest">いちばん長く乗れた波</span><textarea name="longest" placeholder="例：早めにパドルを始めたら、波が大きくなるところで滑り出せた" data-i18n-ph="longestPh"></textarea></label>
+          <fieldset><legend data-i18n="falls">落ちた・失敗した原因（いくつでも）</legend><div class="chips" data-multi="falls"></div></fieldset>
         </div></details>
 
-        <details class="grp" open><summary>ふり返り</summary><div class="gbody">
-          <label class="f">新しくできるようになったこと<input type="text" name="newSkill" placeholder="例：座ったまま向きを変えられた"></label>
-          <label class="f">前回からの成長<input type="text" name="growth"></label>
-          <label class="f">次回の宿題（次に記録するとき上に出ます）<input type="text" name="next" placeholder="例：波が来る3秒前からパドル開始"></label>
-          <label class="f">気づき・気持ち<textarea name="memo"></textarea></label>
-          <label class="f">体の痛み・擦れ<input type="text" name="body" placeholder="例：胸の擦れなし（ラッシュガード着用）"></label>
-          <label class="f">英語メモ（サーフィン用語・聞きたいこと）<textarea name="english" placeholder="例：pearling＝ノーズが刺さること"></textarea></label>
-          <fieldset><legend>満足度</legend><div class="chips" data-chips="rate"></div></fieldset>
-          <div class="f">写真・動画
+        <details class="grp" open><summary data-i18n="gReflect">ふり返り</summary><div class="gbody">
+          <label class="f"><span data-i18n="newSkill">新しくできるようになったこと</span><input type="text" name="newSkill" placeholder="例：座ったまま向きを変えられた" data-i18n-ph="newSkillPh"></label>
+          <label class="f"><span data-i18n="growth">前回からの成長</span><input type="text" name="growth"></label>
+          <label class="f"><span data-i18n="next">次回の宿題（次に記録するとき上に出ます）</span><input type="text" name="next" placeholder="例：波が来る3秒前からパドル開始" data-i18n-ph="nextPh"></label>
+          <label class="f"><span data-i18n="memo">気づき・気持ち</span><textarea name="memo"></textarea></label>
+          <label class="f"><span data-i18n="body">体の痛み・擦れ</span><input type="text" name="body" placeholder="例：胸の擦れなし（ラッシュガード着用）" data-i18n-ph="bodyPh"></label>
+          <label class="f"><span data-i18n="english">英語メモ（サーフィン用語・聞きたいこと）</span><textarea name="english" placeholder="例：pearling＝ノーズが刺さること" data-i18n-ph="englishPh"></textarea></label>
+          <fieldset><legend data-i18n="rate">満足度</legend><div class="chips" data-chips="rate"></div></fieldset>
+          <div class="f"><span data-i18n="media">写真・動画</span>
             <div class="media" id="formMedia"></div>
-            <p class="hint">写真は自動で小さくして保存。動画は1本50MBまで（短めに）。コーチは写真を最大3枚見ます。</p>
+            <p class="hint" data-i18n="mediaHint">写真は自動で小さくして保存。動画は1本50MBまで（短めに）。コーチは写真を最大3枚見ます。</p>
           </div>
         </div></details>
 
         <div class="actions">
-          <button class="btn pri" type="submit" data-coach="1" id="saveCoach">保存＋コーチ</button>
-          <button class="btn" type="submit" id="saveBtn">保存だけ</button>
-          <button class="btn icon" type="button" id="cancelBtn" aria-label="閉じる">×</button>
+          <button class="btn pri" type="submit" data-coach="1" id="saveCoach" data-i18n="saveCoach">保存＋コーチ</button>
+          <button class="btn" type="submit" id="saveBtn" data-i18n="saveOnly">保存だけ</button>
+          <button class="btn icon" type="button" id="cancelBtn" aria-label="閉じる" data-i18n-aria="close">×</button>
         </div>
       </form>
       <datalist id="spotList"></datalist><datalist id="boardList"></datalist><datalist id="themeList"></datalist>
@@ -301,14 +306,14 @@ legend{font-size:14px;color:var(--mute);font-weight:600;margin-bottom:6px;paddin
 
     <div class="grid2">
       <section class="card" aria-labelledby="h-log">
-        <h2 id="h-log">セッション日誌</h2>
-        <div class="toolbar"><input type="search" id="q" placeholder="ポイント・テーマ・メモで検索" aria-label="検索"></div>
+        <h2 id="h-log" data-i18n="logTitle">セッション日誌</h2>
+        <div class="toolbar"><input type="search" id="q" placeholder="ポイント・テーマ・メモで検索" aria-label="検索" data-i18n-ph="search" data-i18n-aria="searchAria"></div>
         <div id="list"></div>
       </section>
       <div class="col">
-        <section class="card"><h2>できるようになったこと</h2><div id="skills"></div></section>
-        <section class="card"><h2>テーマ別の上達</h2><div id="growthBox"></div></section>
-        <section class="card"><h2>ポイント別</h2><div id="spots"></div></section>
+        <section class="card"><h2 data-i18n="skillsTitle">できるようになったこと</h2><div id="skills"></div></section>
+        <section class="card"><h2 data-i18n="growthTitle">テーマ別の上達</h2><div id="growthBox"></div></section>
+        <section class="card"><h2 data-i18n="spotsTitle">ポイント別</h2><div id="spots"></div></section>
       </div>
     </div>
   </div>
@@ -317,46 +322,51 @@ legend{font-size:14px;color:var(--mute);font-weight:600;margin-bottom:6px;paddin
 
 <!-- 設定画面 -->
 <div class="sheet" id="settings" hidden>
-  <header class="band top"><div class="wrap bar"><h1>設定</h1><button class="gear" id="closeSettings" type="button" aria-label="閉じる">×</button></div></header>
+  <header class="band top"><div class="wrap bar"><h1 data-i18n="settings">設定</h1><button class="gear" id="closeSettings" type="button" aria-label="閉じる" data-i18n-aria="close">×</button></div></header>
   <div class="band"><div class="wrap" style="display:grid;gap:16px">
     <section class="card">
-      <h2>AIコーチ（Gemini・無料枠）</h2>
+      <h2 data-i18n="langTitle">Language / 言語</h2>
+      <div class="gbody"><div class="langsw" style="justify-content:flex-start"></div></div>
+    </section>
+
+    <section class="card">
+      <h2 data-i18n="aiTitle">AIコーチ（Gemini・無料枠）</h2>
       <div class="gbody">
-        <p class="hint">Google AI Studio で作った API キーを貼ります。キーはこのスマホの中にだけ保存され、公開されません。無料枠で送った記録・写真は Google のサービス改善に使われることがあります。</p>
-        <label class="f">Gemini API キー<input type="password" id="gKey" autocomplete="off" placeholder="AIza..."></label>
-        <label class="f">モデル（ふつうは変更不要。使えないときは自動で選び直します）<input type="text" id="gModel"></label>
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri" type="button" id="gSave">保存してテスト</button></div>
+        <p class="hint" data-i18n="aiHint">Google AI Studio で作った API キーを貼ります。</p>
+        <label class="f"><span data-i18n="gKey">Gemini API キー</span><input type="password" id="gKey" autocomplete="off" placeholder="AIza..."></label>
+        <label class="f"><span data-i18n="gModel">モデル</span><input type="text" id="gModel"></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri" type="button" id="gSave" data-i18n="gSave">保存してテスト</button></div>
         <p class="hint" id="gMsg"></p>
       </div>
     </section>
 
     <section class="card">
-      <h2>わたしのサーフィン（コーチが読みます）</h2>
+      <h2 data-i18n="pfTitle">わたしのサーフィン（コーチが読みます）</h2>
       <form id="profileForm" class="gbody">
-        <label class="f">レベル<textarea name="level"></textarea></label>
-        <label class="f">よく行く場所<input type="text" name="spots"></label>
-        <label class="f">スタンス<input type="text" name="stance"></label>
-        <label class="f">ボード<textarea name="board"></textarea></label>
-        <label class="f">波A・Bの区別<textarea name="waveAB"></textarea></label>
-        <label class="f">できるようになったこと<textarea name="canDo" rows="6"></textarea></label>
-        <label class="f">今の課題<textarea name="issues" rows="8"></textarea></label>
-        <label class="f">練習目標（優先順）<textarea name="goals" rows="8"></textarea></label>
-        <label class="f">用具・購入検討<textarea name="gear"></textarea></label>
-        <label class="f">サーフィンへの思い<textarea name="why"></textarea></label>
-        <button class="btn pri" type="submit">プロフィールを保存</button>
+        <label class="f"><span data-i18n="pf_level">レベル</span><textarea name="level"></textarea></label>
+        <label class="f"><span data-i18n="pf_spots">よく行く場所</span><input type="text" name="spots"></label>
+        <label class="f"><span data-i18n="pf_stance">スタンス</span><input type="text" name="stance"></label>
+        <label class="f"><span data-i18n="pf_board">ボード</span><textarea name="board"></textarea></label>
+        <label class="f"><span data-i18n="pf_waveAB">波A・Bの区別</span><textarea name="waveAB"></textarea></label>
+        <label class="f"><span data-i18n="pf_canDo">できるようになったこと</span><textarea name="canDo" rows="6"></textarea></label>
+        <label class="f"><span data-i18n="pf_issues">今の課題</span><textarea name="issues" rows="8"></textarea></label>
+        <label class="f"><span data-i18n="pf_goals">練習目標（優先順）</span><textarea name="goals" rows="8"></textarea></label>
+        <label class="f"><span data-i18n="pf_gear">用具・購入検討</span><textarea name="gear"></textarea></label>
+        <label class="f"><span data-i18n="pf_why">サーフィンへの思い</span><textarea name="why"></textarea></label>
+        <button class="btn pri" type="submit" data-i18n="pfSave">プロフィールを保存</button>
       </form>
     </section>
 
     <section class="card">
-      <h2>これまでの記録を取り込む</h2>
+      <h2 data-i18n="impTitle">これまでの記録を取り込む</h2>
       <div class="gbody">
-        <p class="hint">アプリを使う前のメモ・日記・自分宛てのメッセージなどを、そのまま貼り付けてください。AIが1回ずつの記録に分けます。書いていないこと（波の高さ・本数など）は空欄のままです。</p>
-        <label class="f">メモ<textarea id="impText" rows="8" placeholder="例：10/18 Canoes。白波で3本立てた。パドルが遅れて波に置いていかれた。次は早めにパドルを始める"></textarea></label>
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri" type="button" id="impAi">AIコーチで変換</button><button class="btn" type="button" id="impCopy">いつものAIで変換</button></div>
+        <p class="hint" data-i18n="impHint">アプリを使う前のメモを貼り付けてください。</p>
+        <label class="f"><span data-i18n="impMemo">メモ</span><textarea id="impText" rows="8" data-i18n-ph="impPh"></textarea></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri" type="button" id="impAi" data-i18n="impAi">AIコーチで変換</button><button class="btn" type="button" id="impCopy" data-i18n="impCopy">いつものAIで変換</button></div>
         <div class="paste" id="impPaste" hidden>
-          <p>① 指示書をコピーしました → ChatGPT・Claude・Geminiなど、いつも使っているAIに貼り付け<br>② 返ってきた答え（{ で始まる文字）を全部コピーして、下に貼って「読み込む」</p>
-          <textarea id="impAnswer" placeholder="AIの答えをここに貼り付け"></textarea>
-          <button class="btn pri" type="button" id="impLoad">読み込む</button>
+          <p data-i18n-html="impPasteHelp"></p>
+          <textarea id="impAnswer" data-i18n-ph="pastePh"></textarea>
+          <button class="btn pri" type="button" id="impLoad" data-i18n="impLoad">読み込む</button>
         </div>
         <p class="hint" id="impMsg" aria-live="polite"></p>
         <div id="impPreview"></div>
@@ -364,22 +374,23 @@ legend{font-size:14px;color:var(--mute);font-weight:600;margin-bottom:6px;paddin
     </section>
 
     <section class="card">
-      <h2>データ</h2>
+      <h2 data-i18n="dataTitle">データ</h2>
       <div class="gbody">
-        <button class="btn" type="button" id="copyCsv">全記録をCSVでコピー</button>
-        <button class="btn" type="button" id="logout">ログアウト</button>
+        <button class="btn" type="button" id="copyCsv" data-i18n="copyCsv">全記録をCSVでコピー</button>
+        <button class="btn" type="button" id="logout" data-i18n="logout">ログアウト</button>
         <p class="hint" id="whoami"></p>
       </div>
     </section>
   </div></div>
 </div>
 
-<div class="toast" id="toast" role="status"><span id="toastMsg"></span><button type="button" id="undo">元に戻す</button></div>
-<div class="lb" id="lb" role="dialog" aria-label="写真・動画"><button type="button" id="lbClose" aria-label="閉じる">×</button><div id="lbBody"></div></div>
+<div class="toast" id="toast" role="status"><span id="toastMsg"></span><button type="button" id="undo" data-i18n="undo">元に戻す</button></div>
+<div class="lb" id="lb" role="dialog" aria-label="写真・動画" data-i18n-aria="media"><button type="button" id="lbClose" aria-label="閉じる" data-i18n-aria="close">×</button><div id="lbBody"></div></div>
 
 <!-- Supabase（データベース）を使うための道具 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
+<script src="i18n.js"></script><!-- 言葉の対応表（app.js より先に読む） -->
 <script src="app.js"></script>
 </body>
 </html>
