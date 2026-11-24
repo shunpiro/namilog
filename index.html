@@ -130,8 +130,9 @@ legend{font-size:14px;color:var(--mute);font-weight:600;margin-bottom:6px;paddin
 .coach{margin-top:10px;border:1px solid var(--line);border-left:4px solid var(--teal);border-radius:12px;background:var(--bg)}
 .coach>summary{list-style:none;cursor:pointer;padding:10px 12px;min-height:44px;display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:15px}
 .coach>summary::-webkit-details-marker{display:none}
-.coach>summary::after{content:"開く";font-size:13px;color:var(--mute);font-weight:500}
-.coach[open]>summary::after{content:"閉じる"}
+/* 「開く／閉じる」の文字は、言語ごとに app.js が summary の data-open / data-close に入れる */
+.coach>summary::after{content:attr(data-open);font-size:13px;color:var(--mute);font-weight:500;white-space:nowrap}
+.coach[open]>summary::after{content:attr(data-close)}
 .cb{padding:0 12px 12px;display:grid;gap:10px;font-size:15px}
 .cb p{margin:0}.cb h4{margin:0;font-size:13px;color:var(--mute)}
 .cb ul,.cb ol{margin:0;padding-left:1.3em;display:grid;gap:6px}
@@ -307,7 +308,7 @@ legend{font-size:14px;color:var(--mute);font-weight:600;margin-bottom:6px;paddin
     <div class="grid2">
       <section class="card" aria-labelledby="h-log">
         <h2 id="h-log" data-i18n="logTitle">セッション日誌</h2>
-        <div class="toolbar"><input type="search" id="q" placeholder="ポイント・テーマ・メモで検索" aria-label="検索" data-i18n-ph="search" data-i18n-aria="searchAria"></div>
+        <div class="toolbar"><input type="search" id="q" name="namilog-search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="ポイント・テーマ・メモで検索" aria-label="検索" data-i18n-ph="search" data-i18n-aria="searchAria"></div>
         <div id="list"></div>
       </section>
       <div class="col">

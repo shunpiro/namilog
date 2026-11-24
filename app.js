@@ -351,7 +351,11 @@ function logHtml(x) {
   <span><button class="mini" data-edit="${esc(x.id)}">${t('edit')}</button> <button class="mini${del ? ' warn' : ''}" data-del="${esc(x.id)}">${del ? t('delSure') : t('del')}</button></span></div>
   </div></article>`;
 }
-$('q').addEventListener('input', render);
+$('q').addEventListener('input', () => {
+  // ブラウザのパスワード自動入力が、検索欄にメールアドレスを入れてしまうことがある → それなら消す
+  if (user && $('q').value.trim().toLowerCase() === (user.email || '').toLowerCase()) $('q').value = '';
+  render();
+});
 $('growthBox').addEventListener('click', e => { const b = e.target.closest('[data-q]'); if (b) { $('q').value = b.dataset.q; render(); $('h-log').scrollIntoView({ behavior: 'smooth' }); } });
 $('list').addEventListener('toggle', e => { const d = e.target; if (d.dataset?.adv) d.open ? openAdv.add(d.dataset.adv) : openAdv.delete(d.dataset.adv); }, true);
 $('list').addEventListener('click', async e => {
@@ -561,7 +565,7 @@ function coachHtml(x) {
       ${a.photo ? `<h4>${t('fromPhoto')}</h4><p>${esc(a.photo)}</p>` : ''}
       ${a.safety ? `<p class="body">${esc(a.safety)}</p>` : ''}
       ${a.homework?.length ? `<h4>${t('tapHw')}</h4><div class="hwc">${a.homework.map(v => `<button type="button" class="${x.next === v ? 'on' : ''}" data-hw="${esc(x.id)}" data-v="${esc(v)}">${x.next === v ? '✓ ' : ''}${esc(v)}</button>`).join('')}</div>` : ''}`;
-    h += `<details class="coach" data-adv="${esc(x.id)}" ${openAdv.has(x.id) ? 'open' : ''}><summary>${t('coachAdvice')}</summary><div class="cb">${body}
+    h += `<details class="coach" data-adv="${esc(x.id)}" ${openAdv.has(x.id) ? 'open' : ''}><summary data-open="${esc(t('show'))}" data-close="${esc(t('hide'))}">${t('coachAdvice')}</summary><div class="cb">${body}
       <small class="note">${d.getMonth() + 1}/${d.getDate()} · ${pasted ? t('viaChat') : t('viaCoach')}${a.photos ? ' · ' + t('photosUsed', { n: a.photos }) : ''} · ${t('generalAdvice')}</small></div></details>`;
   }
   if (busy) h += `<p class="thinking"><i></i>${t('thinking')}</p>`;

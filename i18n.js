@@ -56,7 +56,7 @@ window.NAMILOG_I18N = {
     growthL: 'Progress', nextL: 'Homework', bodyL: 'Body: {s}', englishL: 'Language notes', forecastL: 'Forecast',
     rateAria: 'Satisfaction {n}', edit: 'Edit', del: 'Delete', delSure: 'Really delete?', listSep: ', ',
     // AIコーチ
-    coachAdvice: 'Coach’s advice', happened: 'What happened', causes: 'Possible causes', actions: 'What to try next',
+    coachAdvice: 'Coach’s advice', show: 'Show', hide: 'Hide', happened: 'What happened', causes: 'Possible causes', actions: 'What to try next',
     fromPhoto: 'From your photos', tapHw: 'Tap to make it next homework', viaChat: 'Your own AI', viaCoach: 'AI coach',
     photosUsed: 'used {n} photo(s)', generalAdvice: 'General advice based on your log',
     thinking: 'The coach is thinking… (10–30 sec)', askCoach: 'Ask the AI coach', askAgain: 'Ask again', askChat: 'Ask your own AI',
@@ -212,7 +212,7 @@ Split them into one record per surf session and return only JSON in the [Format]
     paddleOf: 'パドル：{s}', themeL: 'テーマ', longestL: 'いちばん長い波', fallsL: '失敗の原因', newSkillL: 'できた！',
     growthL: '成長', nextL: '次回の宿題', bodyL: '体：{s}', englishL: '英語メモ', forecastL: '予報',
     rateAria: '満足度{n}', edit: '編集', del: '削除', delSure: '本当に削除', listSep: '、',
-    coachAdvice: 'コーチのアドバイス', happened: '何が起きたか', causes: '考えられる原因', actions: '次に試すこと',
+    coachAdvice: 'コーチのアドバイス', show: '開く', hide: '閉じる', happened: '何が起きたか', causes: '考えられる原因', actions: '次に試すこと',
     fromPhoto: '写真から', tapHw: 'タップで次回の宿題にする', viaChat: 'いつものAI', viaCoach: 'AIコーチ',
     photosUsed: '写真{n}枚を参考', generalAdvice: '記録からの一般的なアドバイスです',
     thinking: 'コーチが考え中…（10〜30秒）', askCoach: 'AIコーチに聞く', askAgain: 'もう一度聞く', askChat: 'いつものAIに聞く',
