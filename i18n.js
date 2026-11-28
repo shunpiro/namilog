@@ -8,7 +8,7 @@ window.NAMILOG_LANG_NAMES = { en: 'English', ja: '日本語' };
 
 window.NAMILOG_I18N = {
   en: {
-    app: 'Namilog',
+    app: 'Nami Club',
     // ログイン・初期設定
     loginMsg: 'Log in with your email and password', email: 'Email', password: 'Password (6+ characters)',
     login: 'Log in', signup: 'New here? Create an account', loggingIn: 'Logging in…', signingUp: 'Creating your account…',
@@ -148,7 +148,7 @@ window.NAMILOG_I18N = {
       profile: 'Student profile:', today: 'Today’s session:', prev: 'Previous session (to check last homework):',
       same: 'Past sessions with the same focus "{t}" (newest first):', other: 'Other recent sessions (for reference):',
       none: 'none', noTheme: '(no focus)', photosNote: '(There are {n} photo(s). I will paste them next.)',
-      impIntro: `You are the data organizer for the surf log app "Namilog". The [Notes] below are surf records the user wrote before using the app.
+      impIntro: `You are the data organizer for the surf log app "Nami Club". The [Notes] below are surf records the user wrote before using the app.
 Split them into one record per surf session and return only JSON in the [Format] below (no explanation, no code block).`,
       impRules: `[Rules]
 - Never guess anything that is not in the notes. Omit unknown fields (do not invent wave height, counts, times).
@@ -170,7 +170,7 @@ Split them into one record per surf session and return only JSON in the [Format]
   },
 
   ja: {
-    app: '波ログ',
+    app: 'Nami Club',
     loginMsg: 'メールアドレスとパスワードでログイン', email: 'メールアドレス', password: 'パスワード（6文字以上）',
     login: 'ログイン', signup: 'はじめて使う（アカウントを作る）', loggingIn: 'ログイン中…', signingUp: 'アカウントを作成中…',
     needEmailPw: 'メールと6文字以上のパスワードを入れてください', wrongPw: 'メールかパスワードが違います',
@@ -280,7 +280,7 @@ Split them into one record per surf session and return only JSON in the [Format]
       profile: '生徒のプロフィール:', today: '今日のセッション:', prev: '前回のセッション（前回の宿題の確認用）:',
       same: '同じテーマ「{t}」の過去の記録（新しい順）:', other: '最近のほかのセッション（参考）:',
       none: 'なし', noTheme: '（テーマなし）', photosNote: '（写真が{n}枚あります。このあと貼り付けます）',
-      impIntro: `あなたはサーフィン記録アプリ「波ログ」のデータ整理係です。下の【メモ】は、ユーザーがアプリを使う前に書いたサーフィンの記録です。
+      impIntro: `あなたはサーフィン記録アプリ「Nami Club」のデータ整理係です。下の【メモ】は、ユーザーがアプリを使う前に書いたサーフィンの記録です。
 1回の海＝1件の記録に分けて、下の【形式】のJSONだけを返してください（説明文やコードブロックは不要）。`,
       impRules: `【ルール】
 - メモに書いていないことは推測で埋めない。分からない項目は出力しない（波の高さ・本数・時間などを作らない）

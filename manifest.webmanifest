@@ -1,7 +1,7 @@
 {
-  "name": "波ログ",
-  "short_name": "波ログ",
-  "description": "上達を記録するサーフィン日誌",
+  "name": "Nami Club",
+  "short_name": "Nami Club",
+  "description": "Surf progress log with an AI coach / 上達を記録するサーフィン日誌",
   "lang": "ja",
   "start_url": "./",
   "scope": "./",
